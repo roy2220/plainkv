@@ -247,6 +247,31 @@ func (hm *HashMap) HasItem(key []byte) ([]byte, bool) {
 	return nil, false
 }
 
+// FetchItem fetches an item from the given cursor in the hash map,
+// and meanwhile advances the given cursor to the next position.
+// It returns false if there are no more items.
+// The initial cursor is of the zero value.
+func (hm *HashMap) FetchItem(cursor *Cursor) ([]byte, []byte, bool) {
+	if cursor.itemIndex < len(cursor.items) {
+		item := &cursor.items[cursor.itemIndex]
+		cursor.itemIndex++
+		return item.Key, item.Value, true
+	}
+
+	for cursor.slotIndex < hm.slotCount {
+		cursor.items = hm.loadSlot(hm.locateSlotAddr(cursor.slotIndex).Get(hm.fileStorage))
+		cursor.slotIndex++
+
+		if len(cursor.items) >= 1 {
+			item := &cursor.items[0]
+			cursor.itemIndex = 1
+			return item.Key, item.Value, true
+		}
+	}
+
+	return nil, nil, false
+}
+
 // MaxNumberOfSlotDirs returns the maximum number of the slot
 // directories of the hash map.
 func (hm *HashMap) MaxNumberOfSlotDirs() int {
@@ -447,6 +472,13 @@ func (hm *HashMap) adjustSlotDirs(maxSlotDirCountShift int) {
 	hm.slotDirsAddr, buffer1 = hm.fileStorage.AllocateSpace(8 << maxSlotDirCountShift)
 	copy(buffer1, buffer2)
 	hm.maxSlotDirCountShift = maxSlotDirCountShift
+}
+
+// Cursor represents a cursor at a position in a hash map.
+type Cursor struct {
+	items     []protocol.HashItem
+	itemIndex int
+	slotIndex int
 }
 
 const (

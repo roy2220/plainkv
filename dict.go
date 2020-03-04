@@ -79,6 +79,15 @@ func (d *Dict) Get(key []byte) ([]byte, bool) {
 	return d.hashMap.HasItem(key)
 }
 
+// Scan scans the dictionary for a key and value from the given
+// cursor, and meanwhile advances the given cursor to the next
+// position.
+// It returns false if there are no more keys and values.
+// The initial cursor is of the zero value.
+func (d *Dict) Scan(cursor *DictCursor) ([]byte, []byte, bool) {
+	return d.hashMap.FetchItem(cursor)
+}
+
 // Stats returns the stats of the dictionary.
 func (d *Dict) Stats() Stats {
 	return Stats{
@@ -89,6 +98,9 @@ func (d *Dict) Stats() Stats {
 		PayloadSize:          d.hashMap.PayloadSize(),
 	}
 }
+
+// DictCursor represents a cursor at a position in a dictionary.
+type DictCursor = hashmap.Cursor
 
 // Stats represents the stats about key/value storages.
 type Stats struct {

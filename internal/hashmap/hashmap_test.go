@@ -173,6 +173,33 @@ func TestHashMapDeleteItem(t *testing.T) {
 	hm.Create()
 }
 
+func TestHashMapFetchItem(t *testing.T) {
+	n := 100000
+	hm, cleanup := MakeHashMap(t, &n)
+	defer cleanup()
+	m := make(map[string]string, n)
+
+	for i := 0; i < n; i++ {
+		k := KVs[i]
+		v := KVs[len(KVs)/2+i]
+		m[string(k)] = string(v)
+	}
+
+	c := hashmap.Cursor{}
+
+	for k, v, ok := hm.FetchItem(&c); ok; k, v, ok = hm.FetchItem(&c) {
+		sk := string(k)
+		sv, ok := m[sk]
+
+		if assert.True(t, ok) {
+			delete(m, sk)
+			assert.Equal(t, sv, string(v))
+		}
+	}
+
+	assert.Equal(t, 0, len(m))
+}
+
 func MakeHashMap(t *testing.T, numberOfHashItems *int) (*hashmap.HashMap, func()) {
 	hm, _, cleanup := DoMakeHashMap(t, numberOfHashItems)
 	return hm, cleanup
