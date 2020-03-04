@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"hash/fnv"
-	"math"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/roy2220/fsm"
@@ -23,6 +22,7 @@ type HashMap struct {
 	minSlotCountShift    int
 	slotCount            int
 	itemCount            int
+	payloadSize          int
 }
 
 // Init initializes the hash map with a given file storage and returns it.
@@ -109,6 +109,8 @@ func (hm *HashMap) AddItem(key []byte, value []byte) ([]byte, bool) {
 		}
 	}
 
+	hm.payloadSize += len(key) + len(value)
+
 	if len(key) <= maxShortKeySize {
 		keySum = 0
 	}
@@ -140,6 +142,7 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte) ([]byte, bool) {
 		item := &items[i]
 
 		if matchItem(item, key, keySum) {
+			hm.payloadSize += len(value) - len(item.Value)
 			value, item.Value = item.Value, value
 			hm.restoreSlot(&slotAddr, items)
 			slotAddrRef.Set(hm.fileStorage, slotAddr)
@@ -165,12 +168,15 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 		item := &items[i]
 
 		if matchItem(item, key, keySum) {
+			hm.payloadSize += len(value) - len(item.Value)
 			value, item.Value = item.Value, value
 			hm.restoreSlot(&slotAddr, items)
 			slotAddrRef.Set(hm.fileStorage, slotAddr)
 			return value, false
 		}
 	}
+
+	hm.payloadSize += len(key) + len(value)
 
 	if len(key) <= maxShortKeySize {
 		keySum = 0
@@ -202,6 +208,7 @@ func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
 		item := &items[i]
 
 		if matchItem(item, key, keySum) {
+			hm.payloadSize -= len(item.Key) + len(item.Value)
 			value := item.Value
 			n := len(items)
 
@@ -266,6 +273,11 @@ func (hm *HashMap) NumberOfSlots() int {
 // NumberOfItems returns the number of the items of the hash map.
 func (hm *HashMap) NumberOfItems() int {
 	return hm.itemCount
+}
+
+// PayloadSize returns the payload size of the hash map.
+func (hm *HashMap) PayloadSize() int {
+	return hm.payloadSize
 }
 
 func (hm *HashMap) calculateSlotIndex(keySum uint64) int {
@@ -440,7 +452,7 @@ func (hm *HashMap) adjustSlotDirs(maxSlotDirCountShift int) {
 const (
 	minMaxSlotDirCountShift = 3
 	slotDirLengthShift      = 12
-	loadFactor              = 1.0 - 1.0/math.E
+	loadFactor              = 0.75
 	maxShortKeySize         = 24
 )
 

@@ -155,6 +155,9 @@ func TestHashMapDeleteItem(t *testing.T) {
 		assert.False(t, ok)
 	}
 
+	t.Logf("fsm_stats=%#v, num_slot_dirs=%#v, num_slots=%#v, num_items=%#v, payload_size=%#v",
+		fs.Stats(), hm.NumberOfSlotDirs(), hm.NumberOfSlots(), hm.NumberOfItems(), hm.PayloadSize())
+	assert.Equal(t, hm.PayloadSize(), 0)
 	assert.Equal(t, hm.NumberOfItems(), 0)
 	assert.Equal(t, hm.NumberOfSlots(), 1)
 	assert.Equal(t, hm.MinNumberOfSlots(), 1)
@@ -162,7 +165,6 @@ func TestHashMapDeleteItem(t *testing.T) {
 	assert.Equal(t, hm.MaxNumberOfSlotDirs(), 8)
 	hm.Destroy()
 	st := fs.Stats()
-	t.Logf("st2=%#v", st)
 
 	if !assert.Equal(t, 0, st.AllocatedSpaceSize) {
 		t.Fatal()
@@ -205,7 +207,8 @@ func DoMakeHashMap(t *testing.T, numberOfHashItems *int) (*hashmap.HashMap, *fsm
 		t.FailNow()
 	}
 
-	t.Logf("st=%#v", fs.Stats())
+	t.Logf("fsm_stats=%#v, num_slot_dirs=%#v, num_slots=%#v, num_items=%#v, payload_size=%#v",
+		fs.Stats(), hm.NumberOfSlotDirs(), hm.NumberOfSlots(), hm.NumberOfItems(), hm.PayloadSize())
 
 	return hm, fs, func() {
 		hm.Destroy()

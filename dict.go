@@ -78,3 +78,23 @@ func (d *Dict) Clear(key []byte) ([]byte, bool) {
 func (d *Dict) Get(key []byte) ([]byte, bool) {
 	return d.hashMap.HasItem(key)
 }
+
+// Stats returns the stats of the dictionary.
+func (d *Dict) Stats() Stats {
+	return Stats{
+		FSM:                  d.fileStorage.Stats(),
+		NumberOfHashSlotDirs: d.hashMap.NumberOfSlotDirs(),
+		NumberOfHashSlots:    d.hashMap.NumberOfSlots(),
+		NumberOfHashItems:    d.hashMap.NumberOfItems(),
+		PayloadSize:          d.hashMap.PayloadSize(),
+	}
+}
+
+// Stats represents the stats about key/value storages.
+type Stats struct {
+	FSM                  fsm.Stats
+	NumberOfHashSlotDirs int
+	NumberOfHashSlots    int
+	NumberOfHashItems    int
+	PayloadSize          int
+}
