@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package plainkv;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option go_package = "github.com/roy2220/plainkv/internal/protocol";
+
+message HashMapInfo {
+    int64 slot_dirs_addr = 1;
+    int64 slot_dir_count = 2;
+    int64 max_slot_dir_count_shift = 3;
+    int64 slot_count = 4;
+    int64 min_slot_count_shift = 5;
+    int64 item_count = 6;
+}
+
+message HashSlot {
+    repeated HashItem items = 1 [ (gogoproto.nullable) = false ];
+}
+
+message HashItem {
+    fixed64 key_sum = 1;
+    bytes key = 2;
+    bytes value = 3;
+}
