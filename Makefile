@@ -1,5 +1,5 @@
 .PHONY: all
-all: vet lint test
+all: vet lint test docs
 
 .PHONY: vet
 include scripts/pbgofiles.mk
