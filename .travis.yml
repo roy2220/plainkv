@@ -1,7 +1,12 @@
-language: go
+language: minimal
 
-go:
-  - 1.13
+services:
+  - docker
+
+script:
+  - rm internal/protocol/*.pb.go
+  - rm docs/*.svg
+  - docker run -it --rm -v${PWD}:/plainkv golang:1.13.8-alpine3.11 sh -c 'apk add -q --no-progress make protoc protobuf-dev graphviz && CGO_ENABLED=0 make -C /plainkv'
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
