@@ -18,8 +18,7 @@ var KVs [][]byte
 func TestHashMapStoreAndLoad(t *testing.T) {
 	n := 100000
 	hm, cleanup := MakeHashMap(t, &n)
-	ia := hm.Store()
-	hm.Load(ia)
+	hm.Load(hm.Store())
 	defer cleanup()
 
 	for i := 0; i < n; i++ {
@@ -137,6 +136,8 @@ func TestHashMapDeleteItem(t *testing.T) {
 			assert.Equal(t, v, v2)
 		}
 	}
+
+	hm.Load(hm.Store())
 
 	for i--; i >= len(tab)/2; i-- {
 		j := int(tab[i])

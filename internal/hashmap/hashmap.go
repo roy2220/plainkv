@@ -69,6 +69,7 @@ func (hm *HashMap) Load(infoAddr int64) {
 	hm.minSlotCountShift = int(info.MinSlotCountShift)
 	hm.slotCount = int(info.SlotCount)
 	hm.itemCount = int(info.ItemCount)
+	hm.payloadSize = int(info.PayloadSize)
 }
 
 // Store stores the hash map to the file storage then returns
@@ -83,6 +84,7 @@ func (hm *HashMap) Store() int64 {
 		MinSlotCountShift:    int64(hm.minSlotCountShift),
 		SlotCount:            int64(hm.slotCount),
 		ItemCount:            int64(hm.itemCount),
+		PayloadSize:          int64(hm.payloadSize),
 	})
 
 	infoAddr, buffer2 := hm.fileStorage.AllocateSpace(len(buffer.Bytes()))
