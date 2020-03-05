@@ -13,3 +13,7 @@ lint:
 .PHONY: test
 test:
 	go test -coverprofile=coverage.txt -covermode=count ./...
+
+.PHONY: docs
+include scripts/svgfiles.mk
+docs: $(svgfiles)

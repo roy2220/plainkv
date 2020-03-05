@@ -4,6 +4,10 @@
 
 A simple key-value storage library for Go
 
+## Architecture
+
+![Architecture](./docs/architecture.svg)
+
 ## Example
 
 ```go

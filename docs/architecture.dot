@@ -1,0 +1,37 @@
+digraph G {
+  node [shape=record];
+
+  subgraph cluster1 {
+    label = "file storage"
+
+    file_storage [label = "<p1>primary space|{space (mmap)|{<p2>|free|<p3>|<p4>|<p5>|free|<p6>|<p7>|<p8>|free|...}}"]
+  }
+
+  subgraph cluster2 {
+    label = "dynamic linear hash map"
+
+    slot_dirs [label = "{slot dirs|{<p1>slot dir 1|<p2>slot dir 2|...|<p3>slot dir 10}}"]
+    slot_dir1 [label = "{slot dir|{<p1>slot 1|<p2>slot 2|...|<p3>slot 100}}"]
+    slot_dir2 [label = "{slor dir|{<p1>slot 101|<p2>slot 102|...|<p3>slot 200}}"]
+    slot_dir3 [label = "{slot dir|{<p1>slot 901|<p2>slot 902|...|<p3>slot 1000}}"]
+    items1 [label = "items|{key=A value=D|key=B value=E|key=C value=F|...}"]
+    items2 [label = "items|{key=G value=J|key=H value=K|key=I value=L|...}"]
+    items3 [label = "items|{key=M value=P|key=N value=Q|key=O value=R|...}"]
+
+    slot_dirs:p1 -> slot_dir1
+    slot_dirs:p2 -> slot_dir2
+    slot_dirs:p3 -> slot_dir3
+    slot_dir1:p2 -> items1
+    slot_dir2:p2 -> items2
+    slot_dir3:p2 -> items3
+  }
+
+  file_storage:p1 -> slot_dirs
+  file_storage:p2 -> slot_dirs [style=dotted]
+  file_storage:p3 -> slot_dir1 [style=dotted]
+  file_storage:p4 -> slot_dir2 [style=dotted]
+  file_storage:p5 -> slot_dir3 [style=dotted]
+  file_storage:p6 -> items1 [style=dotted]
+  file_storage:p7 -> items2 [style=dotted]
+  file_storage:p8 -> items3 [style=dotted]
+}
