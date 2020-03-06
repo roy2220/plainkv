@@ -22,11 +22,9 @@ import (
 func main() {
         func() {
                 d, err := plainkv.OpenDict("./test/dict.tmp", true)
-
                 if err != nil {
                         panic(err)
                 }
-
                 defer d.Close()
 
                 d.Set([]byte("foo"), []byte("bar"))
@@ -40,11 +38,9 @@ func main() {
 
         func() {
                 d, err := plainkv.OpenDict("./test/dict.tmp", false)
-
                 if err != nil {
                         panic(err)
                 }
-
                 defer d.Close()
 
                 v, ok := d.Get([]byte("foo"))
