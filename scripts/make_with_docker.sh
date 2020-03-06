@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -euxo pipefail
 
-tee<<EOF | docker run -i --rm -v${PWD}:/plainkv golang:1.13.8-alpine3.11 sh -euxo pipefail -
-apk add -q --no-progress make \
-                         protoc \
-                         protobuf-dev \
-                         graphviz
-CGO_ENABLED=0 make -C /plainkv ${*}
+tar -C scripts/builder -czh . | docker build -t plainkv_builder:latest  -
+
+tee<<EOF | docker run -i --rm -v${PWD}:/plainkv plainkv_builder:latest /usr/bin/env bash -euxo pipefail -
+CGO_ENABLED=0 GOCACHE=/plainkv/build/cache make -C /plainkv ${*}
 EOF
