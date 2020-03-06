@@ -1,19 +1,29 @@
-.PHONY: all
-all: vet lint test docs
+override SHELL := /usr/bin/env bash -euo pipefail
+override .DEFAULT_GOAL := all
 
-.PHONY: vet
+ifdef USE_DOCKER
+
+%: force
+	@scripts/make-with-docker.sh $@
+
+else # ifdef USE_DOCKER
+
+all: force vet lint test docs
+
 include scripts/pbgofiles.mk
-vet: $(pbgofiles)
+vet: force $(pbgofiles)
 	go vet ./...
 
-.PHONY: lint
-lint:
+lint: force
 	go run golang.org/x/lint/golint -set_exit_status ./...
 
-.PHONY: test
-test:
+test: force
 	go test -coverprofile=coverage.txt -covermode=count ./...
 
-.PHONY: docs
 include scripts/svgfiles.mk
-docs: $(svgfiles)
+docs: force $(svgfiles)
+
+endif # ifdef USE_DOCKER
+
+.PHONY: force
+force:

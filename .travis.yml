@@ -16,7 +16,7 @@ before_script: |
 script: |
   rm internal/protocol/*.pb.go
   rm docs/*.svg
-  scripts/make-with-docker.sh
+  make USE_DOCKER=1
 
 before_cache: |
   BUILDER_DOCKER_IMAGE_ID=$(docker images -q plainkv-builder:latest)
