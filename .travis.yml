@@ -3,10 +3,29 @@ language: minimal
 services:
   - docker
 
-script:
-  - rm internal/protocol/*.pb.go
-  - rm docs/*.svg
-  - scripts/make_with_docker.sh
+cache:
+  directories:
+    - build/docker-cache
+    - build/go-cache
 
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
+before_script: |
+  if [[ -f build/docker-cache/builder-image-id ]]; then
+      docker load < build/docker-cache/builder-image.tar
+  fi
+
+script: |
+  rm internal/protocol/*.pb.go
+  rm docs/*.svg
+  scripts/make-with-docker.sh
+
+before_cache: |
+  BUILDER_DOCKER_IMAGE_ID=$(docker images -q plainkv-builder:latest)
+
+  if [[ ! -z ${BUILDER_DOCKER_IMAGE_ID} ]] && [[ ! -f build/docker-cache/builder-image-id || $(cat build/docker-cache/builder-image-id) != ${BUILDER_DOCKER_IMAGE_ID} ]]; then
+      mkdir -p build/docker-cache
+      docker save plainkv-builder:latest > build/docker-cache/builder-image.tar
+      echo ${BUILDER_DOCKER_IMAGE_ID} > build/docker-cache/builder-image-id
+  fi
+
+after_success: |
+  bash <(curl -s https://codecov.io/bash)
