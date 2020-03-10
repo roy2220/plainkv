@@ -403,7 +403,7 @@ func (hm *HashMap) maybeExpand() {
 func (hm *HashMap) maybeShrink() {
 	hm.itemCount--
 
-	for hm.slotCount >= 2 && float64(hm.itemCount)/float64(hm.slotCount) <= loadFactor*loadFactor {
+	for hm.slotCount >= 2 && float64(hm.itemCount)/float64(hm.slotCount) <= loadFactor/2 {
 		items2 := hm.removeSlot()
 		slotIndex := hm.calculateParentSlotIndex(hm.slotCount)
 		slotAddrRef := hm.locateSlotAddr(slotIndex)
@@ -486,7 +486,7 @@ type Cursor struct {
 const (
 	minMaxSlotDirCountShift = 3
 	slotDirLengthShift      = 12
-	loadFactor              = 0.75
+	loadFactor              = 1.61803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475
 	maxShortKeySize         = 24
 )
 
@@ -559,12 +559,15 @@ func mergeItems(items1, items2 []protocol.HashItem) []protocol.HashItem {
 		n = n2
 	}
 
+	x := uint64(1)
+
 	for i := 0; i < n; i++ {
 		item1 := &items1[i]
 		item2 := &items2[i]
-		x := (len(item1.Key) * len(item2.Key)) & 1
-		items[(i<<1)|x] = *item1
-		items[(i<<1)|(x^1)] = *item2
+		x *= uint64(len(item1.Key)) + uint64(len(item2.Key))
+		j := int(x & 1)
+		items[(i<<1)|j] = *item1
+		items[(i<<1)|(j^1)] = *item2
 	}
 
 	copy(items[n<<1:], items1[n:])
