@@ -123,9 +123,8 @@ func (hm *HashMap) AddItem(key []byte, value []byte) ([]byte, bool) {
 		Value:  value,
 	})
 
-	hm.restoreSlot(&slotAddr, items)
-	slotAddrRef.Set(hm.fileStorage, slotAddr)
-	hm.maybeExpand()
+	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+	hm.postAddItem()
 	return nil, true
 }
 
@@ -146,8 +145,7 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte) ([]byte, bool) {
 		if matchItem(item, key, keySum) {
 			hm.payloadSize += len(value) - len(item.Value)
 			value, item.Value = item.Value, value
-			hm.restoreSlot(&slotAddr, items)
-			slotAddrRef.Set(hm.fileStorage, slotAddr)
+			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
 			return value, true
 		}
 	}
@@ -172,8 +170,7 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 		if matchItem(item, key, keySum) {
 			hm.payloadSize += len(value) - len(item.Value)
 			value, item.Value = item.Value, value
-			hm.restoreSlot(&slotAddr, items)
-			slotAddrRef.Set(hm.fileStorage, slotAddr)
+			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
 			return value, false
 		}
 	}
@@ -190,9 +187,8 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 		Value:  value,
 	})
 
-	hm.restoreSlot(&slotAddr, items)
-	slotAddrRef.Set(hm.fileStorage, slotAddr)
-	hm.maybeExpand()
+	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+	hm.postAddItem()
 	return nil, true
 }
 
@@ -219,9 +215,8 @@ func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
 			}
 
 			items = items[:n-1]
-			hm.restoreSlot(&slotAddr, items)
-			slotAddrRef.Set(hm.fileStorage, slotAddr)
-			hm.maybeShrink()
+			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+			hm.postDeleteItem()
 			return value, true
 		}
 	}
@@ -323,15 +318,15 @@ func (hm *HashMap) calculateParentSlotIndex(slotIndex int) int {
 
 func (hm *HashMap) locateSlotAddr(slotIndex int) addrRef {
 	return addrRef{
-		Addr:  hm.locateSlotDirAddr(slotIndex >> slotDirLengthShift).Get(hm.fileStorage),
-		Index: slotIndex & ((1 << slotDirLengthShift) - 1),
+		ArrayAddr:    hm.locateSlotDirAddr(slotIndex >> slotDirLengthShift).Get(hm.fileStorage),
+		ElementIndex: slotIndex & ((1 << slotDirLengthShift) - 1),
 	}
 }
 
 func (hm *HashMap) locateSlotDirAddr(slotDirIndex int) addrRef {
 	return addrRef{
-		Addr:  hm.slotDirsAddr,
-		Index: slotDirIndex,
+		ArrayAddr:    hm.slotDirsAddr,
+		ElementIndex: slotDirIndex,
 	}
 }
 
@@ -358,9 +353,9 @@ func (hm *HashMap) eraseSlot(slotAddr int64) {
 	hm.fileStorage.FreeSpace(slotAddr)
 }
 
-func (hm *HashMap) restoreSlot(slotAddr *int64, items []protocol.HashItem) {
-	hm.eraseSlot(*slotAddr)
-	*slotAddr = hm.storeSlot(items)
+func (hm *HashMap) restoreSlot(slotAddr int64, items []protocol.HashItem) int64 {
+	hm.eraseSlot(slotAddr)
+	return hm.storeSlot(items)
 }
 
 func (hm *HashMap) loadSlot(slotAddr int64) []protocol.HashItem {
@@ -385,33 +380,37 @@ func (hm *HashMap) loadSlot(slotAddr int64) []protocol.HashItem {
 	return slot.Items
 }
 
-func (hm *HashMap) maybeExpand() {
+func (hm *HashMap) postAddItem() {
 	hm.itemCount++
+	hm.maybeExpand()
+}
 
+func (hm *HashMap) postDeleteItem() {
+	hm.itemCount--
+	hm.maybeShrink()
+}
+
+func (hm *HashMap) maybeExpand() {
 	for float64(hm.itemCount)/float64(hm.slotCount) > loadFactor {
 		slotIndex := hm.calculateParentSlotIndex(hm.slotCount)
 		slotAddrRef := hm.locateSlotAddr(slotIndex)
 		slotAddr := slotAddrRef.Get(hm.fileStorage)
 		items := hm.loadSlot(slotAddr)
 		items1, items2 := splitItems(items, uint64(1<<hm.minSlotCountShift))
-		hm.restoreSlot(&slotAddr, items1)
-		slotAddrRef.Set(hm.fileStorage, slotAddr)
+		slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items1))
 		hm.addSlot(items2)
 	}
 }
 
 func (hm *HashMap) maybeShrink() {
-	hm.itemCount--
-
 	for hm.slotCount >= 2 && float64(hm.itemCount)/float64(hm.slotCount) <= loadFactor/2 {
-		items2 := hm.removeSlot()
+		items1 := hm.removeSlot()
 		slotIndex := hm.calculateParentSlotIndex(hm.slotCount)
 		slotAddrRef := hm.locateSlotAddr(slotIndex)
 		slotAddr := slotAddrRef.Get(hm.fileStorage)
-		items1 := hm.loadSlot(slotAddr)
+		items2 := hm.loadSlot(slotAddr)
 		items := mergeItems(items1, items2)
-		hm.restoreSlot(&slotAddr, items)
-		slotAddrRef.Set(hm.fileStorage, slotAddr)
+		slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
 	}
 }
 
@@ -420,8 +419,7 @@ func (hm *HashMap) addSlot(items []protocol.HashItem) {
 		hm.addSlotDir()
 	}
 
-	slotAddr := hm.storeSlot(items)
-	hm.locateSlotAddr(hm.slotCount).Set(hm.fileStorage, slotAddr)
+	hm.locateSlotAddr(hm.slotCount).Set(hm.fileStorage, hm.storeSlot(items))
 	hm.slotCount++
 
 	if hm.slotCount == 1<<(hm.minSlotCountShift+1) {
@@ -491,17 +489,17 @@ const (
 )
 
 type addrRef struct {
-	Addr  int64
-	Index int
+	ArrayAddr    int64
+	ElementIndex int
 }
 
 func (ar addrRef) Get(fileStorage *fsm.FileStorage) int64 {
-	buffer := fileStorage.AccessSpace(ar.Addr)[ar.Index<<3:]
+	buffer := fileStorage.AccessSpace(ar.ArrayAddr)[ar.ElementIndex<<3:]
 	return int64(binary.BigEndian.Uint64(buffer))
 }
 
 func (ar addrRef) Set(fileStorage *fsm.FileStorage, value int64) {
-	buffer := fileStorage.AccessSpace(ar.Addr)[ar.Index<<3:]
+	buffer := fileStorage.AccessSpace(ar.ArrayAddr)[ar.ElementIndex<<3:]
 	binary.BigEndian.PutUint64(buffer, uint64(value))
 }
 
