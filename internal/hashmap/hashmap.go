@@ -292,13 +292,15 @@ func (hm *HashMap) FetchItem(cursor *Cursor) ([]byte, []byte, bool) {
 	}
 
 	for cursor.slotIndex < hm.slotCount {
-		cursor.items = unpackSlot(hm.loadSlot(hm.locateSlotAddr(cursor.slotIndex).Get(hm.fileStorage)))
+		slot := hm.loadSlot(hm.locateSlotAddr(cursor.slotIndex).Get(hm.fileStorage))
+		slot.Bin = copyBytes(slot.Bin)
+		cursor.items = unpackSlot(slot)
 		cursor.slotIndex++
 
 		if len(cursor.items) >= 1 {
 			item := &cursor.items[0]
 			cursor.itemIndex = 1
-			return copyBytes(item.Key), copyBytes(item.Value), true
+			return item.Key, item.Value, true
 		}
 	}
 
