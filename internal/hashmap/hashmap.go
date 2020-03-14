@@ -101,7 +101,7 @@ func (hm *HashMap) AddItem(key []byte, value []byte) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := hm.loadSlot(slotAddr)
+	items := unpackSlot(hm.loadSlot(slotAddr))
 
 	for i := range items {
 		item := &items[i]
@@ -114,16 +114,17 @@ func (hm *HashMap) AddItem(key []byte, value []byte) ([]byte, bool) {
 	hm.payloadSize += len(key) + len(value)
 
 	if len(key) <= maxShortKeySize {
+		// optimization for binary size
 		keySum = 0
 	}
 
-	items = append(items, protocol.HashItem{
+	items = append(items, hashItem{
 		KeySum: keySum,
 		Key:    key,
 		Value:  value,
 	})
 
-	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
 	hm.postAddItem()
 	return nil, true
 }
@@ -137,7 +138,7 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := hm.loadSlot(slotAddr)
+	items := unpackSlot(hm.loadSlot(slotAddr))
 
 	for i := range items {
 		item := &items[i]
@@ -145,7 +146,7 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte) ([]byte, bool) {
 		if matchItem(item, key, keySum) {
 			hm.payloadSize += len(value) - len(item.Value)
 			value, item.Value = item.Value, value
-			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
 			return value, true
 		}
 	}
@@ -162,7 +163,7 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := hm.loadSlot(slotAddr)
+	items := unpackSlot(hm.loadSlot(slotAddr))
 
 	for i := range items {
 		item := &items[i]
@@ -170,7 +171,7 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 		if matchItem(item, key, keySum) {
 			hm.payloadSize += len(value) - len(item.Value)
 			value, item.Value = item.Value, value
-			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
 			return value, false
 		}
 	}
@@ -178,16 +179,17 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 	hm.payloadSize += len(key) + len(value)
 
 	if len(key) <= maxShortKeySize {
+		// optimization for binary size
 		keySum = 0
 	}
 
-	items = append(items, protocol.HashItem{
+	items = append(items, hashItem{
 		KeySum: keySum,
 		Key:    key,
 		Value:  value,
 	})
 
-	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
 	hm.postAddItem()
 	return nil, true
 }
@@ -200,7 +202,7 @@ func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := hm.loadSlot(slotAddr)
+	items := unpackSlot(hm.loadSlot(slotAddr))
 
 	for i := range items {
 		item := &items[i]
@@ -215,7 +217,7 @@ func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
 			}
 
 			items = items[:n-1]
-			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
 			hm.postDeleteItem()
 			return value, true
 		}
@@ -231,7 +233,7 @@ func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
 func (hm *HashMap) HasItem(key []byte) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddr := hm.locateSlotAddr(hm.calculateSlotIndex(keySum)).Get(hm.fileStorage)
-	items := hm.loadSlot(slotAddr)
+	items := unpackSlot(hm.loadSlot(slotAddr))
 
 	for i := range items {
 		item := &items[i]
@@ -256,7 +258,7 @@ func (hm *HashMap) FetchItem(cursor *Cursor) ([]byte, []byte, bool) {
 	}
 
 	for cursor.slotIndex < hm.slotCount {
-		cursor.items = hm.loadSlot(hm.locateSlotAddr(cursor.slotIndex).Get(hm.fileStorage))
+		cursor.items = unpackSlot(hm.loadSlot(hm.locateSlotAddr(cursor.slotIndex).Get(hm.fileStorage)))
 		cursor.slotIndex++
 
 		if len(cursor.items) >= 1 {
@@ -330,12 +332,11 @@ func (hm *HashMap) locateSlotDirAddr(slotDirIndex int) addrRef {
 	}
 }
 
-func (hm *HashMap) storeSlot(items []protocol.HashItem) int64 {
-	if len(items) == 0 {
+func (hm *HashMap) storeSlot(slot *protocol.HashSlot) int64 {
+	if len(slot.ItemInfos) == 0 {
 		return -1
 	}
 
-	slot := protocol.HashSlot{Items: items}
 	slotSize := slot.Size()
 	var rawSlotSize [binary.MaxVarintLen64]byte
 	i := binary.PutUvarint(rawSlotSize[:], uint64(slotSize))
@@ -353,14 +354,14 @@ func (hm *HashMap) eraseSlot(slotAddr int64) {
 	hm.fileStorage.FreeSpace(slotAddr)
 }
 
-func (hm *HashMap) restoreSlot(slotAddr int64, items []protocol.HashItem) int64 {
+func (hm *HashMap) restoreSlot(slotAddr int64, slot *protocol.HashSlot) int64 {
 	hm.eraseSlot(slotAddr)
-	return hm.storeSlot(items)
+	return hm.storeSlot(slot)
 }
 
-func (hm *HashMap) loadSlot(slotAddr int64) []protocol.HashItem {
+func (hm *HashMap) loadSlot(slotAddr int64) *protocol.HashSlot {
 	if slotAddr < 0 {
-		return nil
+		return &protocol.HashSlot{}
 	}
 
 	buffer := hm.fileStorage.AccessSpace(slotAddr)
@@ -377,7 +378,7 @@ func (hm *HashMap) loadSlot(slotAddr int64) []protocol.HashItem {
 		panic(errCorrupted)
 	}
 
-	return slot.Items
+	return &slot
 }
 
 func (hm *HashMap) postAddItem() {
@@ -395,31 +396,30 @@ func (hm *HashMap) maybeExpand() {
 		slotIndex := hm.calculateParentSlotIndex(hm.slotCount)
 		slotAddrRef := hm.locateSlotAddr(slotIndex)
 		slotAddr := slotAddrRef.Get(hm.fileStorage)
-		items := hm.loadSlot(slotAddr)
-		items1, items2 := splitItems(items, uint64(1<<hm.minSlotCountShift))
-		slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items1))
-		hm.addSlot(items2)
+		items1, items2 := splitItems(unpackSlot(hm.loadSlot(slotAddr)), uint64(1<<hm.minSlotCountShift))
+		slot1, slot2 := packSlot(items1), packSlot(items2)
+		slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, slot1))
+		hm.addSlot(slot2)
 	}
 }
 
 func (hm *HashMap) maybeShrink() {
 	for hm.slotCount >= 2 && float64(hm.itemCount)/float64(hm.slotCount) <= loadFactor/2 {
-		items1 := hm.removeSlot()
+		items1 := unpackSlot(hm.removeSlot())
 		slotIndex := hm.calculateParentSlotIndex(hm.slotCount)
 		slotAddrRef := hm.locateSlotAddr(slotIndex)
 		slotAddr := slotAddrRef.Get(hm.fileStorage)
-		items2 := hm.loadSlot(slotAddr)
-		items := mergeItems(items1, items2)
-		slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, items))
+		items2 := unpackSlot(hm.loadSlot(slotAddr))
+		slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(mergeItems(items1, items2))))
 	}
 }
 
-func (hm *HashMap) addSlot(items []protocol.HashItem) {
+func (hm *HashMap) addSlot(slot *protocol.HashSlot) {
 	if hm.slotCount == hm.slotDirCount<<slotDirLengthShift {
 		hm.addSlotDir()
 	}
 
-	hm.locateSlotAddr(hm.slotCount).Set(hm.fileStorage, hm.storeSlot(items))
+	hm.locateSlotAddr(hm.slotCount).Set(hm.fileStorage, hm.storeSlot(slot))
 	hm.slotCount++
 
 	if hm.slotCount == 1<<(hm.minSlotCountShift+1) {
@@ -427,9 +427,12 @@ func (hm *HashMap) addSlot(items []protocol.HashItem) {
 	}
 }
 
-func (hm *HashMap) removeSlot() []protocol.HashItem {
+func (hm *HashMap) removeSlot() *protocol.HashSlot {
 	slotAddr := hm.locateSlotAddr(hm.slotCount - 1).Get(hm.fileStorage)
-	items := hm.loadSlot(slotAddr)
+	slot := hm.loadSlot(slotAddr)
+	bin := make([]byte, len(slot.Bin))
+	copy(bin, slot.Bin)
+	slot.Bin = bin
 	hm.eraseSlot(slotAddr)
 	hm.slotCount--
 
@@ -441,7 +444,7 @@ func (hm *HashMap) removeSlot() []protocol.HashItem {
 		hm.removeSlotDir()
 	}
 
-	return items
+	return slot
 }
 
 func (hm *HashMap) addSlotDir() {
@@ -476,7 +479,7 @@ func (hm *HashMap) adjustSlotDirs(maxSlotDirCountShift int) {
 
 // Cursor represents a cursor at a position in a hash map.
 type Cursor struct {
-	items     []protocol.HashItem
+	items     []hashItem
 	itemIndex int
 	slotIndex int
 }
@@ -503,6 +506,12 @@ func (ar addrRef) Set(fileStorage *fsm.FileStorage, value int64) {
 	binary.BigEndian.PutUint64(buffer, uint64(value))
 }
 
+type hashItem struct {
+	KeySum uint64
+	Key    []byte
+	Value  []byte
+}
+
 var errCorrupted = errors.New("hashmap: corrupted")
 
 func sumKey(key []byte) uint64 {
@@ -511,7 +520,7 @@ func sumKey(key []byte) uint64 {
 	return h.Sum64()
 }
 
-func matchItem(item *protocol.HashItem, key []byte, keySum uint64) bool {
+func matchItem(item *hashItem, key []byte, keySum uint64) bool {
 	if len(item.Key) > maxShortKeySize && item.KeySum != keySum {
 		return false
 	}
@@ -519,8 +528,71 @@ func matchItem(item *protocol.HashItem, key []byte, keySum uint64) bool {
 	return bytes.Equal(item.Key, key)
 }
 
-func splitItems(items []protocol.HashItem, distinctKeySumBit uint64) ([]protocol.HashItem, []protocol.HashItem) {
-	items2 := ([]protocol.HashItem)(nil)
+func packSlot(items []hashItem) *protocol.HashSlot {
+	n := len(items)
+
+	if n == 0 {
+		return &protocol.HashSlot{}
+	}
+
+	i := 0
+
+	for j := range items {
+		item := &items[j]
+		i += len(item.Key) + len(item.Value)
+	}
+
+	slot := protocol.HashSlot{
+		ItemInfos: make([]protocol.HashItemInfo, n),
+		Bin:       make([]byte, i),
+	}
+
+	i = 0
+
+	for j := range items {
+		item := &items[j]
+		itemInfo := &slot.ItemInfos[j]
+		itemInfo.KeySum = item.KeySum
+		copy(slot.Bin[i:], item.Key)
+		itemInfo.KeySize = int64(len(item.Key))
+		i += len(item.Key)
+		copy(slot.Bin[i:], item.Value)
+		itemInfo.ValueSize = int64(len(item.Value))
+		i += len(item.Value)
+	}
+
+	// optimization for binary size
+	slot.ItemInfos[n-1].ValueSize = 0
+	return &slot
+}
+
+func unpackSlot(slot *protocol.HashSlot) []hashItem {
+	n := len(slot.ItemInfos)
+
+	if n == 0 {
+		return nil
+	}
+
+	items := make([]hashItem, n)
+	i := 0
+
+	for j := range slot.ItemInfos {
+		itemInfo := &slot.ItemInfos[j]
+		item := &items[j]
+		item.KeySum = itemInfo.KeySum
+		item.Key = slot.Bin[i : i+int(itemInfo.KeySize)]
+		i += int(itemInfo.KeySize)
+		item.Value = slot.Bin[i : i+int(itemInfo.ValueSize)]
+		i += int(itemInfo.ValueSize)
+	}
+
+	// cost of optimization for binary size
+	items[n-1].Value = slot.Bin[i:]
+	return items
+}
+
+func splitItems(items []hashItem, distinctKeySumBit uint64) ([]hashItem, []hashItem) {
+	items2 := ([]hashItem)(nil)
 	i := 0
 
 	for j := range items {
@@ -528,6 +600,7 @@ func splitItems(items []protocol.HashItem, distinctKeySumBit uint64) ([]protocol
 		var keySum uint64
 
 		if len(item.Key) <= maxShortKeySize {
+			// cost of optimization for binary size
 			keySum = sumKey(item.Key)
 		} else {
 			keySum = item.KeySum
@@ -546,9 +619,9 @@ func splitItems(items []protocol.HashItem, distinctKeySumBit uint64) ([]protocol
 	return items1, items2
 }
 
-func mergeItems(items1, items2 []protocol.HashItem) []protocol.HashItem {
+func mergeItems(items1, items2 []hashItem) []hashItem {
 	n1, n2 := len(items1), len(items2)
-	items := make([]protocol.HashItem, n1+n2)
+	items := make([]hashItem, n1+n2)
 	var n int
 
 	if n1 < n2 {

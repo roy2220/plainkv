@@ -17,11 +17,12 @@ message HashMapInfo {
 }
 
 message HashSlot {
-    repeated HashItem items = 1 [ (gogoproto.nullable) = false ];
+    repeated HashItemInfo item_infos = 1 [ (gogoproto.nullable) = false ];
+    bytes bin = 2;
 }
 
-message HashItem {
+message HashItemInfo {
     fixed64 key_sum = 1;
-    bytes key = 2;
-    bytes value = 3;
+    int64 key_size = 2;
+    int64 value_size = 3;
 }
