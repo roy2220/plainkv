@@ -14,12 +14,12 @@ func Example() {
 		}
 		defer d.Close()
 
-		d.Set([]byte("foo"), []byte("bar"))
+		d.Set([]byte("foo"), []byte("bar"), false /* don't return the replaced value */)
 
-		v, ok := d.SetIfNotExists([]byte("hello"), []byte("word"))
-		fmt.Printf("%v %q\n", ok, v)
+		_, ok := d.SetIfNotExists([]byte("hello"), []byte("w0rd"), false /* don't return the present value */)
+		fmt.Printf("%v\n", ok)
 
-		v, ok = d.SetIfExists([]byte("hello"), []byte("world"))
+		v, ok := d.SetIfExists([]byte("hello"), []byte("world"), true /* return the replaced value */)
 		fmt.Printf("%v %q\n", ok, v)
 	}()
 
@@ -30,12 +30,6 @@ func Example() {
 		}
 		defer d.Close()
 
-		v, ok := d.Get([]byte("foo"))
-		fmt.Printf("%v %q\n", ok, v)
-
-		v, ok = d.Clear([]byte("hello"))
-		fmt.Printf("%v %q\n", ok, v)
-
 		dc := plainkv.DictCursor{}
 		for {
 			k, v, ok := d.Scan(&dc)
@@ -44,11 +38,18 @@ func Example() {
 			}
 			fmt.Printf("%q %q\n", k, v)
 		}
+
+		v, ok := d.Test([]byte("foo"), true /* return the present value */)
+		fmt.Printf("%v %q\n", ok, v)
+
+		v, ok = d.Clear([]byte("hello"), true /* return the removed value */)
+		fmt.Printf("%v %q\n", ok, v)
 	}()
 	// Output:
-	// true ""
-	// true "word"
+	// true
+	// true "w0rd"
+	// "foo" "bar"
+	// "hello" "world"
 	// true "bar"
 	// true "world"
-	// "foo" "bar"
 }

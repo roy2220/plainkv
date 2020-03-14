@@ -18,7 +18,7 @@ message HashMapInfo {
 
 message HashSlot {
     repeated HashItemInfo item_infos = 1 [ (gogoproto.nullable) = false ];
-    bytes bin = 2;
+    bytes bin = 2 [(gogoproto.nullable) = false, (gogoproto.customtype) = "BytesView"];
 }
 
 message HashItemInfo {

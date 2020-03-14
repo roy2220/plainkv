@@ -24,7 +24,7 @@ func TestHashMapStoreAndLoad(t *testing.T) {
 	for i := 0; i < n; i++ {
 		k := KVs[i]
 		v := KVs[len(KVs)/2+i]
-		v2, ok := hm.HasItem(k)
+		v2, ok := hm.HasItem(k, true)
 
 		if assert.True(t, ok) {
 			assert.Equal(t, v, v2)
@@ -41,7 +41,7 @@ func TestHashMapUpdateItem(t *testing.T) {
 		k := KVs[i]
 		v := KVs[len(KVs)/2+i]
 		v2 := strconv.AppendInt(make([]byte, 0, 6), int64(i), 10)
-		v3, ok := hm.UpdateItem(k, v2)
+		v3, ok := hm.UpdateItem(k, v2, true)
 
 		if assert.True(t, ok) {
 			assert.Equal(t, v, v3)
@@ -50,7 +50,7 @@ func TestHashMapUpdateItem(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		k := KVs[i]
-		v, ok := hm.HasItem(k)
+		v, ok := hm.HasItem(k, true)
 
 		if assert.True(t, ok) {
 			j, err := strconv.ParseInt(string(v), 10, 32)
@@ -71,7 +71,7 @@ func TestHashMapAddOrUpdateItem(t *testing.T) {
 		k := KVs[i]
 		v := KVs[len(KVs)/2+i]
 		v2 := strconv.AppendInt(make([]byte, 0, 6), int64(i), 10)
-		v3, ok := hm.AddOrUpdateItem(k, v2)
+		v3, ok := hm.AddOrUpdateItem(k, v2, true)
 
 		if assert.False(t, ok) {
 			assert.Equal(t, v, v3)
@@ -81,13 +81,14 @@ func TestHashMapAddOrUpdateItem(t *testing.T) {
 	for i := n; i < 2*n; i++ {
 		k := KVs[i]
 		v := strconv.AppendInt(make([]byte, 0, 6), int64(i), 10)
-		_, ok := hm.AddOrUpdateItem(k, v)
+		v2, ok := hm.AddOrUpdateItem(k, v, false)
 		assert.True(t, ok)
+		assert.Equal(t, []byte(nil), v2)
 	}
 
 	for i := 0; i < 2*n; i++ {
 		k := KVs[i]
-		v, ok := hm.HasItem(k)
+		v, ok := hm.HasItem(k, true)
 
 		if assert.True(t, ok) {
 			j, err := strconv.ParseInt(string(v), 10, 32)
@@ -119,7 +120,7 @@ func TestHashMapDeleteItem(t *testing.T) {
 		j := int(tab[i])
 		k := KVs[j]
 		v := KVs[len(KVs)/2+j]
-		v2, ok := hm.DeleteItem(k)
+		v2, ok := hm.DeleteItem(k, true)
 
 		if assert.True(t, ok) {
 			assert.Equal(t, v, v2)
@@ -130,7 +131,7 @@ func TestHashMapDeleteItem(t *testing.T) {
 		j := int(tab[i])
 		k := KVs[j]
 		v := KVs[len(KVs)/2+j]
-		v2, ok := hm.HasItem(k)
+		v2, ok := hm.HasItem(k, true)
 
 		if assert.True(t, ok) {
 			assert.Equal(t, v, v2)
@@ -143,7 +144,7 @@ func TestHashMapDeleteItem(t *testing.T) {
 		j := int(tab[i])
 		k := KVs[j]
 		v := KVs[len(KVs)/2+j]
-		v2, ok := hm.DeleteItem(k)
+		v2, ok := hm.DeleteItem(k, true)
 
 		if assert.True(t, ok) {
 			assert.Equal(t, v, v2)
@@ -152,8 +153,9 @@ func TestHashMapDeleteItem(t *testing.T) {
 
 	for i := 0; i < n; i++ {
 		k := KVs[i]
-		_, ok := hm.HasItem(k)
+		v, ok := hm.HasItem(k, false)
 		assert.False(t, ok)
+		assert.Equal(t, []byte(nil), v)
 	}
 
 	t.Logf("fsm_stats=%#v, num_slot_dirs=%#v, num_slots=%#v, num_items=%#v, payload_size=%#v",
@@ -224,7 +226,7 @@ func DoMakeHashMap(t *testing.T, numberOfHashItems *int) (*hashmap.HashMap, *fsm
 	}
 
 	for i := 0; i < *numberOfHashItems; i++ {
-		_, ok := hm.AddItem(KVs[i], KVs[m+i])
+		_, ok := hm.AddItem(KVs[i], KVs[m+i], false)
 
 		if !assert.True(t, ok) {
 			t.FailNow()

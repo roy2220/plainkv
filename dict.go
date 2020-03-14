@@ -41,42 +41,42 @@ func (d *Dict) Close() error {
 
 // Set sets the value for the given key in the dictionary to the
 // given value.
-// If the key already exists it updates the value then returns
-// the original value.
-func (d *Dict) Set(key []byte, value []byte) []byte {
-	value, _ = d.hashMap.AddOrUpdateItem(key, value)
+// If the key already exists it replaces the value then returns
+// the replaced value (optional).
+func (d *Dict) Set(key []byte, value []byte, returnReplacedValue bool) []byte {
+	value, _ = d.hashMap.AddOrUpdateItem(key, value, returnReplacedValue)
 	return value
 }
 
 // SetIfExists sets the value for the given key in the dictionary
 // to the given value.
-// If the key exists, it updates the value then returns true and
-// the original value, otherwise it returns false.
-func (d *Dict) SetIfExists(key []byte, value []byte) ([]byte, bool) {
-	return d.hashMap.UpdateItem(key, value)
+// If the key exists, it replaces the value then returns true and
+// the replaced value (optional), otherwise it returns false.
+func (d *Dict) SetIfExists(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
+	return d.hashMap.UpdateItem(key, value, returnReplacedValue)
 }
 
 // SetIfNotExists sets the value for the given key in the
 // dictionary to the given value.
 // If the key doesn't exists, it adds the key with the value then
-// returns true, otherwise it returns false and the value for the
-// existing key.
-func (d *Dict) SetIfNotExists(key []byte, value []byte) ([]byte, bool) {
-	return d.hashMap.AddItem(key, value)
+// returns true, otherwise it returns false and the present value
+// (optional).
+func (d *Dict) SetIfNotExists(key []byte, value []byte, returnPresentValue bool) ([]byte, bool) {
+	return d.hashMap.AddItem(key, value, returnPresentValue)
 }
 
-// Clear clears the value for the given key in the dictionary.
+// Clear clears the given key in the dictionary.
 // If the key exists, it deletes the key then returns true and the
-// value, otherwise if returns false.
-func (d *Dict) Clear(key []byte) ([]byte, bool) {
-	return d.hashMap.DeleteItem(key)
+// removed value (optional), otherwise if returns false.
+func (d *Dict) Clear(key []byte, returnRemovedValue bool) ([]byte, bool) {
+	return d.hashMap.DeleteItem(key, returnRemovedValue)
 }
 
-// Get gets the value for the given key in the dictionary.
-// If the key exists, it returns true and the value, otherwise
-// it returns false.
-func (d *Dict) Get(key []byte) ([]byte, bool) {
-	return d.hashMap.HasItem(key)
+// Test tests the given key in the dictionary.
+// If the key exists, it returns true and the present value (optional),
+// otherwise it returns false.
+func (d *Dict) Test(key []byte, returnPresentValue bool) ([]byte, bool) {
+	return d.hashMap.HasItem(key, returnPresentValue)
 }
 
 // Scan scans the dictionary for a key and value from the given

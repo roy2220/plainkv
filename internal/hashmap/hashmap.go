@@ -95,9 +95,9 @@ func (hm *HashMap) Store() int64 {
 
 // AddItem adds the given item to the hash map.
 // If no item matched exists in the hash map, it adds the item
-// then returns true, otherwise it returns false and the value
-// of the item.
-func (hm *HashMap) AddItem(key []byte, value []byte) ([]byte, bool) {
+// then returns true, otherwise it returns false and the present
+// value (optional) of the item.
+func (hm *HashMap) AddItem(key []byte, value []byte, returnPresentValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
@@ -107,7 +107,13 @@ func (hm *HashMap) AddItem(key []byte, value []byte) ([]byte, bool) {
 		item := &items[i]
 
 		if matchItem(item, key, keySum) {
-			return item.Value, false
+			if returnPresentValue {
+				value = copyBytes(item.Value)
+			} else {
+				value = nil
+			}
+
+			return value, false
 		}
 	}
 
@@ -132,9 +138,9 @@ func (hm *HashMap) AddItem(key []byte, value []byte) ([]byte, bool) {
 // UpdateItem replaces the value of an item with the given key
 // in the hash map to the given one.
 // If an item matched exists in the hash map, it updates the item
-// then returns true and the original value of the item, otherwise
-// it returns false.
-func (hm *HashMap) UpdateItem(key []byte, value []byte) ([]byte, bool) {
+// then returns true and the replaced value (optional) of the item,
+// otherwise it returns false.
+func (hm *HashMap) UpdateItem(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
@@ -145,7 +151,13 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte) ([]byte, bool) {
 
 		if matchItem(item, key, keySum) {
 			hm.payloadSize += len(value) - len(item.Value)
-			value, item.Value = item.Value, value
+
+			if returnReplacedValue {
+				value, item.Value = copyBytes(item.Value), value
+			} else {
+				value, item.Value = nil, value
+			}
+
 			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
 			return value, true
 		}
@@ -158,8 +170,8 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte) ([]byte, bool) {
 // the value of an item with the given key to the given one.
 // If no item matched exists in the hash map, it adds the item then
 // returns true, otherwise it updates the item then returns false
-// and the original value of the item.
-func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
+// and the replaced value (optional) of the item.
+func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
@@ -170,7 +182,13 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 
 		if matchItem(item, key, keySum) {
 			hm.payloadSize += len(value) - len(item.Value)
-			value, item.Value = item.Value, value
+
+			if returnReplacedValue {
+				value, item.Value = copyBytes(item.Value), value
+			} else {
+				value, item.Value = nil, value
+			}
+
 			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
 			return value, false
 		}
@@ -196,9 +214,9 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte) ([]byte, bool) {
 
 // DeleteItem deletes an item with the given key in the hash map.
 // If an item matched exists in the hash map, it deletes the item
-// then returns true and the value of the item, otherwise it
-// returns false.
-func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
+// then returns true and the removed value (optional) of the item,
+// otherwise it returns false.
+func (hm *HashMap) DeleteItem(key []byte, returnRemovedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
 	slotAddr := slotAddrRef.Get(hm.fileStorage)
@@ -209,7 +227,14 @@ func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
 
 		if matchItem(item, key, keySum) {
 			hm.payloadSize -= len(item.Key) + len(item.Value)
-			value := item.Value
+			var value []byte
+
+			if returnRemovedValue {
+				value = copyBytes(item.Value)
+			} else {
+				value = nil
+			}
+
 			n := len(items)
 
 			for j := i + 1; j < n; j++ {
@@ -229,8 +254,9 @@ func (hm *HashMap) DeleteItem(key []byte) ([]byte, bool) {
 // HasItem returns the value of an item with the given key in
 // the hash map.
 // If an item matched exists in the hash map, it returns true
-// and the value of the item, otherwise it returns false.
-func (hm *HashMap) HasItem(key []byte) ([]byte, bool) {
+// and the present value (optional) of the item, otherwise it
+// returns false.
+func (hm *HashMap) HasItem(key []byte, returnPresentValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddr := hm.locateSlotAddr(hm.calculateSlotIndex(keySum)).Get(hm.fileStorage)
 	items := unpackSlot(hm.loadSlot(slotAddr))
@@ -239,7 +265,15 @@ func (hm *HashMap) HasItem(key []byte) ([]byte, bool) {
 		item := &items[i]
 
 		if matchItem(item, key, keySum) {
-			return item.Value, true
+			var value []byte
+
+			if returnPresentValue {
+				value = copyBytes(item.Value)
+			} else {
+				value = nil
+			}
+
+			return value, true
 		}
 	}
 
@@ -264,7 +298,7 @@ func (hm *HashMap) FetchItem(cursor *Cursor) ([]byte, []byte, bool) {
 		if len(cursor.items) >= 1 {
 			item := &cursor.items[0]
 			cursor.itemIndex = 1
-			return item.Key, item.Value, true
+			return copyBytes(item.Key), copyBytes(item.Value), true
 		}
 	}
 
@@ -430,9 +464,7 @@ func (hm *HashMap) addSlot(slot *protocol.HashSlot) {
 func (hm *HashMap) removeSlot() *protocol.HashSlot {
 	slotAddr := hm.locateSlotAddr(hm.slotCount - 1).Get(hm.fileStorage)
 	slot := hm.loadSlot(slotAddr)
-	bin := make([]byte, len(slot.Bin))
-	copy(bin, slot.Bin)
-	slot.Bin = bin
+	slot.Bin = copyBytes(slot.Bin)
 	hm.eraseSlot(slotAddr)
 	hm.slotCount--
 
@@ -644,4 +676,14 @@ func mergeItems(items1, items2 []hashItem) []hashItem {
 	copy(items[n<<1:], items1[n:])
 	copy(items[n<<1:], items2[n:])
 	return items
+}
+
+func copyBytes(data []byte) []byte {
+	if len(data) == 0 {
+		return nil
+	}
+
+	buffer := make([]byte, len(data))
+	copy(buffer, data)
+	return buffer
 }
