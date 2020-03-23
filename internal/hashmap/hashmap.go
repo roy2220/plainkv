@@ -35,7 +35,7 @@ func (hm *HashMap) Init(fileStorage *fsm.FileStorage) *HashMap {
 // Create creates the hash map on the file storage.
 func (hm *HashMap) Create() {
 	slotDirsAddr, buffer1 := hm.fileStorage.AllocateSpace(8 << minMaxSlotDirCountShift)
-	slotDirAddr, buffer2 := hm.fileStorage.AllocateSpace(8 << slotDirLengthShift)
+	slotDirAddr, buffer2 := hm.fileStorage.AllocateAlignedSpace(8 << slotDirLengthShift)
 	binary.BigEndian.PutUint64(buffer1, uint64(slotDirAddr))
 	binary.BigEndian.PutUint64(buffer2, ^uint64(0))
 	hm.slotDirsAddr = slotDirsAddr
@@ -48,7 +48,7 @@ func (hm *HashMap) Create() {
 func (hm *HashMap) Destroy() {
 	slotDirAddr := int64(binary.BigEndian.Uint64(hm.fileStorage.AccessSpace(hm.slotDirsAddr)))
 	hm.fileStorage.FreeSpace(hm.slotDirsAddr)
-	hm.fileStorage.FreeSpace(slotDirAddr)
+	hm.fileStorage.FreeAlignedSpace(slotDirAddr)
 	*hm = *new(HashMap).Init(hm.fileStorage)
 }
 
@@ -72,7 +72,7 @@ func (hm *HashMap) Load(infoAddr int64) {
 	hm.payloadSize = int(info.PayloadSize)
 }
 
-// Store stores the hash map to the file storage then returns
+// Store stores the hash map to the file storage and then returns
 // the info address.
 func (hm *HashMap) Store() int64 {
 	buffer := proto.NewBuffer(nil)
@@ -95,8 +95,8 @@ func (hm *HashMap) Store() int64 {
 
 // AddItem adds the given item to the hash map.
 // If no item matched exists in the hash map, it adds the item
-// then returns true, otherwise it returns false and the present
-// value (optional) of the item.
+// and then returns true, otherwise it returns false and the
+// present value (optional) of the item.
 func (hm *HashMap) AddItem(key []byte, value []byte, returnPresentValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
@@ -136,10 +136,10 @@ func (hm *HashMap) AddItem(key []byte, value []byte, returnPresentValue bool) ([
 }
 
 // UpdateItem replaces the value of an item with the given key
-// in the hash map to the given one.
+// in the hash map to the given value.
 // If an item matched exists in the hash map, it updates the item
-// then returns true and the replaced value (optional) of the item,
-// otherwise it returns false.
+// and then returns true and the replaced value (optional) of the
+// item, otherwise it returns false.
 func (hm *HashMap) UpdateItem(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
@@ -167,10 +167,10 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte, returnReplacedValue bool
 }
 
 // AddOrUpdateItem adds the given item to the hash map or replaces
-// the value of an item with the given key to the given one.
-// If no item matched exists in the hash map, it adds the item then
-// returns true, otherwise it updates the item then returns false
-// and the replaced value (optional) of the item.
+// the value of an item with the given key to the given value.
+// If no item matched exists in the hash map, it adds the item and
+// then returns true, otherwise it updates the item and then returns
+// false and the replaced value (optional) of the item.
 func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
@@ -214,8 +214,8 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte, returnReplacedValue
 
 // DeleteItem deletes an item with the given key in the hash map.
 // If an item matched exists in the hash map, it deletes the item
-// then returns true and the removed value (optional) of the item,
-// otherwise it returns false.
+// and then returns true and the removed value (optional) of the
+// item, otherwise it returns false.
 func (hm *HashMap) DeleteItem(key []byte, returnRemovedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
 	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
@@ -251,8 +251,8 @@ func (hm *HashMap) DeleteItem(key []byte, returnRemovedValue bool) ([]byte, bool
 	return nil, false
 }
 
-// HasItem returns the value of an item with the given key in
-// the hash map.
+// HasItem checks whether an item with the given key in the
+// hash map.
 // If an item matched exists in the hash map, it returns true
 // and the present value (optional) of the item, otherwise it
 // returns false.
@@ -374,10 +374,10 @@ func (hm *HashMap) storeSlot(slot *protocol.HashSlot) int64 {
 	}
 
 	slotSize := slot.Size()
-	var rawSlotSize [binary.MaxVarintLen64]byte
-	i := binary.PutUvarint(rawSlotSize[:], uint64(slotSize))
-	slotAddr, buffer := hm.fileStorage.AllocateSpace(i + slotSize)
-	copy(buffer, rawSlotSize[:i])
+	slotRawSize := make([]byte, binary.MaxVarintLen64)
+	slotRawSize = slotRawSize[:binary.PutUvarint(slotRawSize, uint64(slotSize))]
+	slotAddr, buffer := hm.fileStorage.AllocateSpace(len(slotRawSize) + slotSize)
+	i := copy(buffer, slotRawSize)
 	slot.MarshalTo(buffer[i:])
 	return slotAddr
 }
@@ -486,14 +486,14 @@ func (hm *HashMap) addSlotDir() {
 		hm.adjustSlotDirs(hm.maxSlotDirCountShift + 1)
 	}
 
-	slotDirAddr, _ := hm.fileStorage.AllocateSpace(8 << slotDirLengthShift)
+	slotDirAddr, _ := hm.fileStorage.AllocateAlignedSpace(8 << slotDirLengthShift)
 	hm.locateSlotDirAddr(hm.slotDirCount).Set(hm.fileStorage, slotDirAddr)
 	hm.slotDirCount++
 }
 
 func (hm *HashMap) removeSlotDir() {
 	slotDirAddr := hm.locateSlotDirAddr(hm.slotDirCount - 1).Get(hm.fileStorage)
-	hm.fileStorage.FreeSpace(slotDirAddr)
+	hm.fileStorage.FreeAlignedSpace(slotDirAddr)
 	hm.slotDirCount--
 
 	if hm.maxSlotDirCountShift > minMaxSlotDirCountShift && hm.slotDirCount == (1<<(hm.maxSlotDirCountShift-2))+1 {
@@ -587,12 +587,10 @@ func packSlot(items []hashItem) *protocol.HashSlot {
 		item := &items[j]
 		itemInfo := &slot.ItemInfos[j]
 		itemInfo.KeySum = item.KeySum
-		copy(slot.Bin[i:], item.Key)
+		i += copy(slot.Bin[i:], item.Key)
 		itemInfo.KeySize = int64(len(item.Key))
-		i += len(item.Key)
-		copy(slot.Bin[i:], item.Value)
+		i += copy(slot.Bin[i:], item.Value)
 		itemInfo.ValueSize = int64(len(item.Value))
-		i += len(item.Value)
 	}
 
 	// optimization for binary size

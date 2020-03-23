@@ -41,8 +41,8 @@ func (d *Dict) Close() error {
 
 // Set sets the value for the given key in the dictionary to the
 // given value.
-// If the key already exists it replaces the value then returns
-// the replaced value (optional).
+// If the key already exists it replaces the value and then
+// returns the replaced value (optional).
 func (d *Dict) Set(key []byte, value []byte, returnReplacedValue bool) []byte {
 	value, _ = d.hashMap.AddOrUpdateItem(key, value, returnReplacedValue)
 	return value
@@ -50,24 +50,24 @@ func (d *Dict) Set(key []byte, value []byte, returnReplacedValue bool) []byte {
 
 // SetIfExists sets the value for the given key in the dictionary
 // to the given value.
-// If the key exists, it replaces the value then returns true and
-// the replaced value (optional), otherwise it returns false.
+// If the key exists, it replaces the value and then returns true
+// and the replaced value (optional), otherwise it returns false.
 func (d *Dict) SetIfExists(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
 	return d.hashMap.UpdateItem(key, value, returnReplacedValue)
 }
 
 // SetIfNotExists sets the value for the given key in the
 // dictionary to the given value.
-// If the key doesn't exists, it adds the key with the value then
-// returns true, otherwise it returns false and the present value
-// (optional).
+// If the key doesn't exists, it adds the key with the value and
+// then returns true, otherwise it returns false and the present
+// value (optional).
 func (d *Dict) SetIfNotExists(key []byte, value []byte, returnPresentValue bool) ([]byte, bool) {
 	return d.hashMap.AddItem(key, value, returnPresentValue)
 }
 
 // Clear clears the given key in the dictionary.
-// If the key exists, it deletes the key then returns true and the
-// removed value (optional), otherwise if returns false.
+// If the key exists, it deletes the key and then returns true
+// and the removed value (optional), otherwise if returns false.
 func (d *Dict) Clear(key []byte, returnRemovedValue bool) ([]byte, bool) {
 	return d.hashMap.DeleteItem(key, returnRemovedValue)
 }
