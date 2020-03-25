@@ -19,13 +19,14 @@ type BPTree struct {
 	payloadSize  int
 }
 
-// Init initializes the B+ tree with the file storage returns it.
+// Init initializes the B+ tree with the given file storage and returns it.
 func (bpt *BPTree) Init(fileStorage *fsm.FileStorage) *BPTree {
 	bpt.fileStorage = fileStorage
+	bpt.rootAddr = -1
 	return bpt
 }
 
-// Create creates the B+ tree on disk.
+// Create creates the B+ tree on the file storage.
 func (bpt *BPTree) Create() {
 	var rootController leafController
 	bpt.rootAddr, rootController = bpt.createLeaf()
@@ -33,7 +34,7 @@ func (bpt *BPTree) Create() {
 	bpt.leafList.Init(rootController, bpt.rootAddr)
 }
 
-// Destroy destroys the B+ tree on disk.
+// Destroy destroys the B+ tree on the file storage.
 func (bpt *BPTree) Destroy() {
 	bpt.destroyLeaf(bpt.rootAddr)
 	*bpt = *new(BPTree).Init(bpt.fileStorage)

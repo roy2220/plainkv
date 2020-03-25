@@ -4,7 +4,7 @@ package plainkv;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
-option go_package = "github.com/roy2220/plainkv/internal/protocol";
+option go_package = "github.com/roy2220/plainkv/hashmap/internal/protocol";
 
 message HashMapInfo {
     int64 slot_dirs_addr = 1;

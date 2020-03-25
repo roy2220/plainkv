@@ -3,7 +3,7 @@ package plainkv
 
 import (
 	"github.com/roy2220/fsm"
-	"github.com/roy2220/plainkv/internal/hashmap"
+	"github.com/roy2220/plainkv/hashmap"
 )
 
 // Dict represents a dictionary.

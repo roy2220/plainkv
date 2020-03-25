@@ -1,4 +1,4 @@
-// Package hashmap implements a hash map.
+// Package hashmap implements an on-disk hash map.
 package hashmap
 
 import (
@@ -10,10 +10,10 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/roy2220/fsm"
 
-	"github.com/roy2220/plainkv/internal/protocol"
+	"github.com/roy2220/plainkv/hashmap/internal/protocol"
 )
 
-// HashMap represents a hash map.
+// HashMap represents a hash map on disk.
 type HashMap struct {
 	fileStorage          *fsm.FileStorage
 	slotDirsAddr         int64
@@ -25,7 +25,7 @@ type HashMap struct {
 	payloadSize          int
 }
 
-// Init initializes the hash map with a given file storage and returns it.
+// Init initializes the hash map with the given file storage and returns it.
 func (hm *HashMap) Init(fileStorage *fsm.FileStorage) *HashMap {
 	hm.fileStorage = fileStorage
 	hm.slotDirsAddr = -1
@@ -35,7 +35,7 @@ func (hm *HashMap) Init(fileStorage *fsm.FileStorage) *HashMap {
 // Create creates the hash map on the file storage.
 func (hm *HashMap) Create() {
 	slotDirsAddr, buffer1 := hm.fileStorage.AllocateSpace(8 << minMaxSlotDirCountShift)
-	slotDirAddr, buffer2 := hm.fileStorage.AllocateAlignedSpace(8 << slotDirLengthShift)
+	slotDirAddr, buffer2 := hm.fileStorage.AllocateSpace(8 << slotDirLengthShift)
 	binary.BigEndian.PutUint64(buffer1, uint64(slotDirAddr))
 	binary.BigEndian.PutUint64(buffer2, ^uint64(0))
 	hm.slotDirsAddr = slotDirsAddr
@@ -48,7 +48,7 @@ func (hm *HashMap) Create() {
 func (hm *HashMap) Destroy() {
 	slotDirAddr := int64(binary.BigEndian.Uint64(hm.fileStorage.AccessSpace(hm.slotDirsAddr)))
 	hm.fileStorage.FreeSpace(hm.slotDirsAddr)
-	hm.fileStorage.FreeAlignedSpace(slotDirAddr)
+	hm.fileStorage.FreeSpace(slotDirAddr)
 	*hm = *new(HashMap).Init(hm.fileStorage)
 }
 
@@ -486,14 +486,14 @@ func (hm *HashMap) addSlotDir() {
 		hm.adjustSlotDirs(hm.maxSlotDirCountShift + 1)
 	}
 
-	slotDirAddr, _ := hm.fileStorage.AllocateAlignedSpace(8 << slotDirLengthShift)
+	slotDirAddr, _ := hm.fileStorage.AllocateSpace(8 << slotDirLengthShift)
 	hm.locateSlotDirAddr(hm.slotDirCount).Set(hm.fileStorage, slotDirAddr)
 	hm.slotDirCount++
 }
 
 func (hm *HashMap) removeSlotDir() {
 	slotDirAddr := hm.locateSlotDirAddr(hm.slotDirCount - 1).Get(hm.fileStorage)
-	hm.fileStorage.FreeAlignedSpace(slotDirAddr)
+	hm.fileStorage.FreeSpace(slotDirAddr)
 	hm.slotDirCount--
 
 	if hm.maxSlotDirCountShift > minMaxSlotDirCountShift && hm.slotDirCount == (1<<(hm.maxSlotDirCountShift-2))+1 {

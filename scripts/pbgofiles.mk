@@ -1,4 +1,4 @@
-override pbgofiles := $(patsubst %.proto,%.pb.go,$(wildcard internal/protocol/*.proto))
+override pbgofiles := $(patsubst %.proto,%.pb.go,$(wildcard hashmap/internal/protocol/*.proto))
 override protoc-gen-gogo := build/gogoprotobuf/bin/protoc-gen-gogofaster
 override include := build/include
 override gopackage := $(shell go list -m)
