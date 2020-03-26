@@ -13,7 +13,7 @@
 <g id="node1" class="node">
 <title>leaf</title>
 <polygon fill="none" stroke="#000000" points="0,-50.5 0,-149.5 771,-149.5 771,-50.5 0,-50.5"/>
-<text text-anchor="middle" x="385.5" y="-134.3" font-family="Times,serif" font-size="14.00" fill="#000000">non&#45;leaf</text>
+<text text-anchor="middle" x="385.5" y="-134.3" font-family="Times,serif" font-size="14.00" fill="#000000">non&#45;leaf (8192 bytes)</text>
 <polyline fill="none" stroke="#000000" points="0,-126.5 771,-126.5 "/>
 <text text-anchor="middle" x="38.5" y="-92.3" font-family="Times,serif" font-size="14.00" fill="#000000">child count</text>
 <text text-anchor="middle" x="38.5" y="-77.3" font-family="Times,serif" font-size="14.00" fill="#000000">(4 bytes)</text>

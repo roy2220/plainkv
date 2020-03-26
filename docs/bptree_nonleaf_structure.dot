@@ -1,7 +1,7 @@
 digraph G {
   node [shape = record];
 
-  leaf [label = "{non-leaf|{child count\n(4 bytes)|{child header 1|{<ko1>key 1\noffset\n(4 bytes)|<vo1>child 1\naddr\n(8 bytes)}}|{child header 2|{<ko2>key 2\noffset\n(4 bytes)|<vo2>child 2\naddr\n(8 bytes)}}|...|{child header 10|{<ko10>key 10\noffset\n(4 bytes)|<vo10>child 10\naddr\n(8 bytes)}}|... free space ...|<kd1>key 1\ndata|<kd2>key 2\ndata|...|<kd10>key 10\ndata}}"]
+  leaf [label = "{non-leaf (8192 bytes)|{child count\n(4 bytes)|{child header 1|{<ko1>key 1\noffset\n(4 bytes)|<vo1>child 1\naddr\n(8 bytes)}}|{child header 2|{<ko2>key 2\noffset\n(4 bytes)|<vo2>child 2\naddr\n(8 bytes)}}|...|{child header 10|{<ko10>key 10\noffset\n(4 bytes)|<vo10>child 10\naddr\n(8 bytes)}}|... free space ...|<kd1>key 1\ndata|<kd2>key 2\ndata|...|<kd10>key 10\ndata}}"]
 
   leaf:ko1 -> leaf:kd1
   leaf:ko2 -> leaf:kd2
