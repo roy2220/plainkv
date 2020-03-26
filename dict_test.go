@@ -6,7 +6,7 @@ import (
 	"github.com/roy2220/plainkv"
 )
 
-func Example() {
+func ExampleDict() {
 	func() {
 		d, err := plainkv.OpenDict("./test/dict.tmp", true)
 		if err != nil {

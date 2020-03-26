@@ -3,6 +3,7 @@ package bptree
 
 import (
 	"bytes"
+	"encoding/binary"
 
 	"github.com/roy2220/fsm"
 )
@@ -23,6 +24,7 @@ type BPTree struct {
 func (bpt *BPTree) Init(fileStorage *fsm.FileStorage) *BPTree {
 	bpt.fileStorage = fileStorage
 	bpt.rootAddr = -1
+	bpt.leafList.Set(-1, -1)
 	return bpt
 }
 
@@ -38,6 +40,52 @@ func (bpt *BPTree) Create() {
 func (bpt *BPTree) Destroy() {
 	bpt.destroyLeaf(bpt.rootAddr)
 	*bpt = *new(BPTree).Init(bpt.fileStorage)
+}
+
+// Store stores the B+ tree to the file storage and then returns
+// the info address.
+func (bpt *BPTree) Store() int64 {
+	buffer := bytes.NewBuffer(nil)
+
+	info := bpTreeInfo{
+		RootAddr:         bpt.rootAddr,
+		Height:           int8(bpt.height),
+		LeafListTailAddr: bpt.leafList.TailAddr(),
+		LeafListHeadAddr: bpt.leafList.HeadAddr(),
+		LeafCount:        int64(bpt.leafCount),
+		NonLeafCount:     int64(bpt.nonLeafCount),
+		RecordCount:      int64(bpt.recordCount),
+		PayloadSize:      int64(bpt.payloadSize),
+	}
+
+	if err := binary.Write(buffer, binary.BigEndian, &info); err != nil {
+		panic(err)
+	}
+
+	infoAddr, buffer2 := bpt.fileStorage.AllocateSpace(buffer.Len())
+	copy(buffer2, buffer.Bytes())
+	*bpt = *new(BPTree).Init(bpt.fileStorage)
+	return infoAddr
+}
+
+// Load loads the B+ tree from the file storage with the
+// given info address.
+func (bpt *BPTree) Load(infoAddr int64) {
+	data := bytes.NewReader(bpt.fileStorage.AccessSpace(infoAddr))
+	var info bpTreeInfo
+
+	if err := binary.Read(data, binary.BigEndian, &info); err != nil {
+		panic(err)
+	}
+
+	bpt.fileStorage.FreeSpace(infoAddr)
+	bpt.rootAddr = info.RootAddr
+	bpt.height = int(info.Height)
+	bpt.leafList.Set(info.LeafListTailAddr, info.LeafListHeadAddr)
+	bpt.leafCount = int(info.LeafCount)
+	bpt.nonLeafCount = int(info.NonLeafCount)
+	bpt.recordCount = int(info.RecordCount)
+	bpt.payloadSize = int(info.PayloadSize)
 }
 
 // AddRecord adds the given record to the B+ tree.
@@ -120,7 +168,7 @@ func (bpt *BPTree) HasRecord(key []byte, returnPresentValue bool) ([]byte, bool)
 }
 
 // SearchForward searchs the the B+ tree for records with
-// keys in the given interval [maxKey, minKey].
+// keys in the given range [minKey...maxKey].
 // It returns an iterator to iterate over the records found
 // in ascending order.
 func (bpt *BPTree) SearchForward(minKey []byte, maxKey []byte) Iterator {
@@ -137,7 +185,7 @@ func (bpt *BPTree) SearchForward(minKey []byte, maxKey []byte) Iterator {
 }
 
 // SearchBackward searchs the the B+ tree for records with
-// keys in the given interval [maxKey, minKey].
+// keys in the given range [minKey...maxKey].
 // It returns an iterator to iterate over the records found
 // in descending order.
 func (bpt *BPTree) SearchBackward(minKey []byte, maxKey []byte) Iterator {
@@ -686,18 +734,14 @@ func (bpt *BPTree) search(minKey []byte, maxKey []byte) (int64, int, int64, int,
 
 	if ok1 || ok2 {
 		if ok1 && ok2 {
-			if bpt.recordCount == 1 {
+			if f1 == f2 || bpt.recordCount == 1 {
 				d = 0
 			} else {
-				if f1 == f2 {
-					d = 0
-				} else {
-					if !f1 {
-						return 0, 0, 0, 0, false
-					}
-
-					d = -1
+				if !f1 {
+					return 0, 0, 0, 0, false
 				}
+
+				d = -1
 			}
 		} else {
 			d = -1
@@ -791,6 +835,17 @@ func (bpt *BPTree) destroyNonLeaf(nonLeafAddr int64) {
 
 func (bpt *BPTree) getNonLeafController(nonLeafAddr int64) nonLeafController {
 	return nonLeafFactory{bpt.fileStorage}.GetNonLeafController(nonLeafAddr)
+}
+
+type bpTreeInfo struct {
+	RootAddr         int64
+	Height           int8
+	LeafListTailAddr int64
+	LeafListHeadAddr int64
+	LeafCount        int64
+	NonLeafCount     int64
+	RecordCount      int64
+	PayloadSize      int64
 }
 
 type recordPath []recordPathComponent

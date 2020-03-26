@@ -1,0 +1,25 @@
+digraph G {
+  node [shape = record];
+
+  subgraph cluster1 {
+    label = "Key"
+    style = bold
+
+    key1 [label = "{key (len \< 257)| ...\n(N bytes)}"]
+    key2 [label = "{key (len == 257)|{...\n(249 bytes)|<oa>overflow addr\n(8 bytes)}}"]
+    key2_overflow [label = "{key overflow|...\n(N-249 bytes)}"]
+
+    key2:oa -> key2_overflow
+  }
+
+  subgraph cluster2 {
+    label = "Value"
+    style = bold
+
+    value1 [label = "{value (len \< 129)| ...\n(N bytes)}"]
+    value2 [label = "{value (len == 129)|{...\n(121 bytes)|<oa>overflow addr\n(8 bytes)}}"]
+    value2_overflow [label = "{value overflow|...\n(N-121 bytes)}"]
+
+    value2:oa -> value2_overflow
+  }
+}

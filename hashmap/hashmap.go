@@ -52,26 +52,6 @@ func (hm *HashMap) Destroy() {
 	*hm = *new(HashMap).Init(hm.fileStorage)
 }
 
-// Load loads the hash map from the file storage with the
-// given info address.
-func (hm *HashMap) Load(infoAddr int64) {
-	buffer := proto.NewBuffer(hm.fileStorage.AccessSpace(infoAddr))
-	var info protocol.HashMapInfo
-
-	if err := buffer.DecodeMessage(&info); err != nil {
-		panic(errCorrupted)
-	}
-
-	hm.fileStorage.FreeSpace(infoAddr)
-	hm.slotDirsAddr = info.SlotDirsAddr
-	hm.maxSlotDirCountShift = int(info.MaxSlotDirCountShift)
-	hm.slotDirCount = int(info.SlotDirCount)
-	hm.minSlotCountShift = int(info.MinSlotCountShift)
-	hm.slotCount = int(info.SlotCount)
-	hm.itemCount = int(info.ItemCount)
-	hm.payloadSize = int(info.PayloadSize)
-}
-
 // Store stores the hash map to the file storage and then returns
 // the info address.
 func (hm *HashMap) Store() int64 {
@@ -91,6 +71,26 @@ func (hm *HashMap) Store() int64 {
 	copy(buffer2, buffer.Bytes())
 	*hm = *new(HashMap).Init(hm.fileStorage)
 	return infoAddr
+}
+
+// Load loads the hash map from the file storage with the
+// given info address.
+func (hm *HashMap) Load(infoAddr int64) {
+	buffer := proto.NewBuffer(hm.fileStorage.AccessSpace(infoAddr))
+	var info protocol.HashMapInfo
+
+	if err := buffer.DecodeMessage(&info); err != nil {
+		panic(errCorrupted)
+	}
+
+	hm.fileStorage.FreeSpace(infoAddr)
+	hm.slotDirsAddr = info.SlotDirsAddr
+	hm.maxSlotDirCountShift = int(info.MaxSlotDirCountShift)
+	hm.slotDirCount = int(info.SlotDirCount)
+	hm.minSlotCountShift = int(info.MinSlotCountShift)
+	hm.slotCount = int(info.SlotCount)
+	hm.itemCount = int(info.ItemCount)
+	hm.payloadSize = int(info.PayloadSize)
 }
 
 // AddItem adds the given item to the hash map.

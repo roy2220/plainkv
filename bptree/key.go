@@ -10,11 +10,11 @@ import (
 )
 
 var (
-	// MaxKey presents the minimum key of a B+ tree.
-	MaxKey = []byte("MAX_KEY")
-
-	// MinKey presents the maximum key of a B+ tree.
+	// MinKey presents the minimum key in a B+ tree.
 	MinKey = []byte("MIN_KEY")
+
+	// MaxKey presents the maximum key in a B+ tree.
+	MaxKey = []byte("MAX_KEY")
 )
 
 const maxKeySize = 257

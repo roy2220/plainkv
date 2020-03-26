@@ -1,0 +1,39 @@
+digraph G {
+  node [shape = record];
+
+  subgraph cluster1 {
+    label = "file storage"
+    style = bold
+
+    file_storage [label = "<p1>primary space|{space (mmap)|{<p2>|free|<p3>|<p4>|<p5>|free|<p6>|<p7>|<p8>|free|...}}"]
+  }
+
+  subgraph cluster2 {
+    label = "B+ tree"
+    style = bold
+
+    root [label = "{root\n(non-leaf)|{<p1>|key 9|<p2>}}"]
+    non_leaf_1 [label = "{non-leaf 1|{<p1>|key 5|<p2>}}"]
+    non_leaf_2 [label = "{non-leaf 2|{<p1>|key 13|<p2>}}"]
+    leaf_11 [label = "{leaf 1|{key 1|key 2|key 3|key 4}|{value 1|value 2|value 3|value 4}}"]
+    leaf_12 [label = "{leaf 2|{key 5|key 6|key 7|key 8}|{value 5|value 6|value 7|value 8}}"]
+    leaf_21 [label = "{leaf 3|{key 9|key 10|key 11|key 12}|{value 9|value 10|value 11|value 12}}"]
+    leaf_22 [label = "{leaf 4|{key 13|key 14|key 15|key 16}|{value 13|value 14|value 15|value 16}}"]
+
+    root:p1 -> non_leaf_1
+    root:p2 -> non_leaf_2
+    non_leaf_1:p1 -> leaf_11
+    non_leaf_1:p2 -> leaf_12
+    non_leaf_2:p1 -> leaf_21
+    non_leaf_2:p2 -> leaf_22
+  }
+
+  file_storage:p1 -> root
+  file_storage:p2 -> root [style = dotted]
+  file_storage:p3 -> non_leaf_1 [style = dotted]
+  file_storage:p4 -> non_leaf_2 [style = dotted]
+  file_storage:p5 -> leaf_11 [style = dotted]
+  file_storage:p6 -> leaf_21 [style = dotted]
+  file_storage:p7 -> leaf_21 [style = dotted]
+  file_storage:p8 -> leaf_22 [style = dotted]
+}

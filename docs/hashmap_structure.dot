@@ -9,7 +9,7 @@ digraph G {
   }
 
   subgraph cluster2 {
-    label = "dynamic linear hash map"
+    label = "hash map"
     style = bold
 
     slot_dirs [label = "{slot dirs|{<p1>slot dir 1|<p2>slot dir 2|...|<p3>slot dir 10}}"]

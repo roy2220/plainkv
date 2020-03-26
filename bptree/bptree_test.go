@@ -97,7 +97,7 @@ func TestBPTreeSearchForwardAndBackward(t *testing.T) {
 	for it := bpt.SearchForward(bptree.MinKey, bptree.MaxKey); !it.IsAtEnd(); it.Advance() {
 		k := Keywords[SortedKeywordIndexes[i]]
 		i++
-		k2 := it.ReadKey()
+		k2, _ := it.ReadKey()
 		if !assert.Equal(t, k2, k) {
 			t.FailNow()
 		}
@@ -109,7 +109,7 @@ func TestBPTreeSearchForwardAndBackward(t *testing.T) {
 	for it := bpt.SearchBackward(bptree.MinKey, bptree.MaxKey); !it.IsAtEnd(); it.Advance() {
 		k := Keywords[SortedKeywordIndexes[i]]
 		i--
-		k2 := it.ReadKey()
+		k2, _ := it.ReadKey()
 		if !assert.Equal(t, k2, k) {
 			t.FailNow()
 		}
@@ -132,19 +132,19 @@ func TestBPTreeSearchForwardAndBackward(t *testing.T) {
 
 	{
 		it := bpt.SearchForward(bptree.MinKey, bptree.MinKey)
-		minKey1 := it.ReadKey()
+		minKey1, _ := it.ReadKey()
 		assert.Equal(t, minKey, minKey1)
 		it.Advance()
 		assert.True(t, it.IsAtEnd())
 
 		it = bpt.SearchForward(minKey, bptree.MinKey)
-		minKey2 := it.ReadKey()
+		minKey2, _ := it.ReadKey()
 		assert.Equal(t, minKey, minKey2)
 		it.Advance()
 		assert.True(t, it.IsAtEnd())
 
 		it = bpt.SearchForward(bptree.MinKey, minKey)
-		minKey3 := it.ReadKey()
+		minKey3, _ := it.ReadKey()
 		assert.Equal(t, minKey, minKey3)
 		it.Advance()
 		assert.True(t, it.IsAtEnd())
@@ -152,23 +152,41 @@ func TestBPTreeSearchForwardAndBackward(t *testing.T) {
 
 	{
 		it := bpt.SearchBackward(bptree.MaxKey, bptree.MaxKey)
-		maxKey1 := it.ReadKey()
+		maxKey1, _ := it.ReadKey()
 		assert.Equal(t, maxKey, maxKey1)
 		it.Advance()
 		assert.True(t, it.IsAtEnd())
 
 		it = bpt.SearchBackward(maxKey, bptree.MaxKey)
-		maxKey2 := it.ReadKey()
+		maxKey2, _ := it.ReadKey()
 		assert.Equal(t, maxKey, maxKey2)
 		it.Advance()
 		assert.True(t, it.IsAtEnd())
 
 		it = bpt.SearchBackward(bptree.MaxKey, maxKey)
-		maxKey3 := it.ReadKey()
+		maxKey3, _ := it.ReadKey()
 		assert.Equal(t, maxKey, maxKey3)
 		it.Advance()
 		assert.True(t, it.IsAtEnd())
 	}
+}
+
+func TestBPTreeStoreAndLoad(t *testing.T) {
+	bpt, _, cleanup := MakeBPTree(t)
+	defer cleanup()
+	bpt.Load(bpt.Store())
+	i := 0
+
+	for it := bpt.SearchForward(bptree.MinKey, bptree.MaxKey); !it.IsAtEnd(); it.Advance() {
+		k := Keywords[SortedKeywordIndexes[i]]
+		i++
+		k2, _ := it.ReadKey()
+		if !assert.Equal(t, k2, k) {
+			t.FailNow()
+		}
+	}
+
+	assert.Equal(t, len(Keywords), i)
 }
 
 func _TestBPTreeFprint(t *testing.T) {

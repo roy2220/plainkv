@@ -1,0 +1,12 @@
+digraph G {
+  node [shape = record];
+
+  leaf [label = "{leaf|{record count\n(4 bytes)|{record header 1|{<ko1>key 1\noffset\n(4 bytes)|<vo1>value 1\noffset\n(4 bytes)}}|{record header 2|{<ko2>key 2\noffset\n(4 bytes)|<vo2>value 2\noffset\n(4 bytes)}}|...|{record header 10|{<ko10>key 10\noffset\n(4 bytes)|<vo10>value 10\noffset\n(4 bytes)}}|... free space ...|<kd1>key 1\ndata|<vd1>value 1\ndata|<kd2>key 2\ndata|<vd2>value 2\ndata|...|<kd10>key 10\ndata|<vd10>value 10\ndata}}"]
+
+  leaf:ko1 -> leaf:kd1
+  leaf:vo1 -> leaf:vd1
+  leaf:ko2 -> leaf:kd2
+  leaf:vo2 -> leaf:vd2
+  leaf:ko10 -> leaf:kd10
+  leaf:vo10 -> leaf:vd10
+}

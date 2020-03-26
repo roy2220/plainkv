@@ -16,6 +16,11 @@ func (ll *leafList) Init(leafAccessor []byte, leafAddr int64) *leafList {
 	return ll
 }
 
+func (ll *leafList) Set(tailAddr int64, headAddr int64) {
+	ll.tailAddr = tailAddr
+	ll.headAddr = headAddr
+}
+
 func (ll *leafList) InsertLeafAfter(fileStorage *fsm.FileStorage, leafAddr int64, leafPrevAddr int64) {
 	leafFactory := leafFactory{fileStorage}
 	leafHeader1 := leafHeader(leafFactory.GetLeafController(leafAddr))

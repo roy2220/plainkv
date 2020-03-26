@@ -1,4 +1,3 @@
-// Package plainkv implements a key/value storage.
 package plainkv
 
 import (
@@ -89,8 +88,8 @@ func (d *Dict) Scan(cursor *DictCursor) ([]byte, []byte, bool) {
 }
 
 // Stats returns the stats of the dictionary.
-func (d *Dict) Stats() Stats {
-	return Stats{
+func (d *Dict) Stats() DictStats {
+	return DictStats{
 		FSM:                  d.fileStorage.Stats(),
 		NumberOfHashSlotDirs: d.hashMap.NumberOfSlotDirs(),
 		NumberOfHashSlots:    d.hashMap.NumberOfSlots(),
@@ -102,8 +101,8 @@ func (d *Dict) Stats() Stats {
 // DictCursor represents a cursor at a position in a dictionary.
 type DictCursor = hashmap.Cursor
 
-// Stats represents the stats about key/value storages.
-type Stats struct {
+// DictStats represents the stats of a dictionary
+type DictStats struct {
 	FSM                  fsm.Stats
 	NumberOfHashSlotDirs int
 	NumberOfHashSlots    int

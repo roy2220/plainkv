@@ -1,26 +1,38 @@
 package bptree
 
-import "github.com/roy2220/fsm"
+import (
+	"errors"
+
+	"github.com/roy2220/fsm"
+)
 
 // Iterator represents an iteration over records in a B+ Tree.
 type Iterator interface {
 	// IsAtEnd indicates if the iteration has no more records.
 	IsAtEnd() (hasNoMoreRecords bool)
 
-	// Record reads the key and value of the current record in the iteration.
-	ReadRecord() (key, value []byte)
+	// Record reads and returns the key and value of the current record in the
+	// iteration.
+	// If the iteration has no more records it returns an error.
+	ReadRecord() (key, value []byte, err error)
 
-	// Key reads the key of the current record in the iteration.
-	ReadKey() []byte
+	// Key reads and returns the key of the current record in the iteration.
+	// If the iteration has no more records it returns an error.
+	ReadKey() (key []byte, err error)
 
-	// Value reads the value of the current record in the iteration.
-	ReadValue() []byte
+	// Value reads and returns the value of the current record in the iteration.
+	// If the iteration has no more records it returns an error.
+	ReadValue() (value []byte, err error)
 
-	// Advance advances the iteration to the next record.
-	Advance()
+	// Advance advances the iteration to the next record and returns the
+	// iterator self.
+	// If the iteration has no more records it does nothing.
+	Advance() Iterator
 }
 
 type forwardIterator struct{ iterator }
+
+var _ = Iterator((*forwardIterator)(nil))
 
 func (fi *forwardIterator) Init(
 	fileStorage *fsm.FileStorage,
@@ -34,24 +46,26 @@ func (fi *forwardIterator) Init(
 	return fi
 }
 
-func (fi *forwardIterator) Advance() {
-	fi.advance()
+func (fi *forwardIterator) Advance() Iterator {
+	fi.preAdvance()
 
-	if fi.isAtEnd {
-		return
+	if !fi.isAtEnd {
+		leafController := fi.makeCurrentLeafController()
+
+		if fi.currentRecordIndex < leafController.NumberOfRecords()-1 {
+			fi.currentRecordIndex++
+		} else {
+			fi.currentLeafAddr = leafHeader(leafController).NextAddr()
+			fi.currentRecordIndex = 0
+		}
 	}
 
-	leafController := fi.makeCurrentLeafController()
-
-	if fi.currentRecordIndex < leafController.NumberOfRecords()-1 {
-		fi.currentRecordIndex++
-	} else {
-		fi.currentLeafAddr = leafHeader(leafController).NextAddr()
-		fi.currentRecordIndex = 0
-	}
+	return fi
 }
 
 type backwardIterator struct{ iterator }
+
+var _ = Iterator((*backwardIterator)(nil))
 
 func (bi *backwardIterator) Init(
 	fileStorage *fsm.FileStorage,
@@ -65,21 +79,21 @@ func (bi *backwardIterator) Init(
 	return bi
 }
 
-func (bi *backwardIterator) Advance() {
-	bi.advance()
+func (bi *backwardIterator) Advance() Iterator {
+	bi.preAdvance()
 
-	if bi.isAtEnd {
-		return
+	if !bi.isAtEnd {
+		if bi.currentRecordIndex >= 1 {
+			bi.currentRecordIndex--
+		} else {
+			leafController := bi.makeCurrentLeafController()
+			bi.currentLeafAddr = leafHeader(leafController).PrevAddr()
+			leafController = bi.makeCurrentLeafController()
+			bi.currentRecordIndex = leafController.NumberOfRecords() - 1
+		}
 	}
 
-	if bi.currentRecordIndex >= 1 {
-		bi.currentRecordIndex--
-	} else {
-		leafController := bi.makeCurrentLeafController()
-		bi.currentLeafAddr = leafHeader(leafController).PrevAddr()
-		leafController = bi.makeCurrentLeafController()
-		bi.currentRecordIndex = leafController.NumberOfRecords() - 1
-	}
+	return bi
 }
 
 type iterator struct {
@@ -91,26 +105,35 @@ type iterator struct {
 	isAtEnd            bool
 }
 
-func (i *iterator) ReadRecord() ([]byte, []byte) {
-	i.checkEnd()
+func (i *iterator) ReadRecord() ([]byte, []byte, error) {
+	if i.isAtEnd {
+		return nil, nil, errEndOfIteration
+	}
+
 	leafController := i.makeCurrentLeafController()
 	key := leafController.GetKey(i.currentRecordIndex)
 	value := leafController.GetValue(i.currentRecordIndex)
-	return keyFactory{i.fileStorage}.ReadKey(key), valueFactory{i.fileStorage}.ReadValue(value)
+	return keyFactory{i.fileStorage}.ReadKey(key), valueFactory{i.fileStorage}.ReadValue(value), nil
 }
 
-func (i *iterator) ReadKey() []byte {
-	i.checkEnd()
+func (i *iterator) ReadKey() ([]byte, error) {
+	if i.isAtEnd {
+		return nil, errEndOfIteration
+	}
+
 	leafController := i.makeCurrentLeafController()
 	key := leafController.GetKey(i.currentRecordIndex)
-	return keyFactory{i.fileStorage}.ReadKey(key)
+	return keyFactory{i.fileStorage}.ReadKey(key), nil
 }
 
-func (i *iterator) ReadValue() []byte {
-	i.checkEnd()
+func (i *iterator) ReadValue() ([]byte, error) {
+	if i.isAtEnd {
+		return nil, errEndOfIteration
+	}
+
 	leafController := i.makeCurrentLeafController()
 	value := leafController.GetValue(i.currentRecordIndex)
-	return valueFactory{i.fileStorage}.ReadValue(value)
+	return valueFactory{i.fileStorage}.ReadValue(value), nil
 }
 
 func (i *iterator) IsAtEnd() bool {
@@ -133,14 +156,7 @@ func (i *iterator) init(
 	i.isAtEnd = isAtEnd
 }
 
-func (i *iterator) checkEnd() {
-	if i.isAtEnd {
-		panic(errEndOfIteration)
-	}
-
-}
-
-func (i *iterator) advance() {
+func (i *iterator) preAdvance() {
 	if i.currentLeafAddr == i.lastLeafAddr && i.currentRecordIndex == i.lastRecordIndex {
 		*i = iterator{isAtEnd: true}
 	}
@@ -149,3 +165,5 @@ func (i *iterator) advance() {
 func (i *iterator) makeCurrentLeafController() leafController {
 	return leafFactory{i.fileStorage}.GetLeafController(i.currentLeafAddr)
 }
+
+var errEndOfIteration = errors.New("bptree: end of iteration")
