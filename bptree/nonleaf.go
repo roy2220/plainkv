@@ -11,7 +11,7 @@ const (
 	maxNonLeafFreeSpaceSize   = nonLeafSize - nonLeafHeaderSize
 	maxNonLeafChildSize       = nonLeafChildHeaderSize + maxKeySize
 	nonLeafOverloadThreshold  = maxNonLeafFreeSpaceSize - maxNonLeafChildSize
-	nonLeafUnderloadThreshold = (nonLeafOverloadThreshold-maxNonLeafChildSize)/2 + 1
+	nonLeafUnderloadThreshold = (nonLeafOverloadThreshold-maxNonLeafChildSize)*3/8 + 1
 )
 
 type nonLeafFactory struct {

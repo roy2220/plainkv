@@ -11,7 +11,7 @@ const (
 	maxLeafFreeSpaceSize   = leafSize - leafHeaderSize
 	maxRecordSize          = recordHeaderSize + maxKeySize + maxValueSize
 	leafOverloadThreshold  = maxLeafFreeSpaceSize - maxRecordSize
-	leafUnderloadThreshold = (leafOverloadThreshold-maxRecordSize)/2 + 1
+	leafUnderloadThreshold = (leafOverloadThreshold-maxRecordSize)*3/8 + 1
 )
 
 type leafFactory struct {
