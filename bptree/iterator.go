@@ -11,16 +11,17 @@ type Iterator interface {
 	// IsAtEnd indicates if the iteration has no more records.
 	IsAtEnd() (hasNoMoreRecords bool)
 
-	// Record reads and returns the key and value of the current record in the
-	// iteration.
+	// ReadRecord reads and returns the key and value of the current record
+	// in the iteration.
 	// If the iteration has no more records it returns an error.
 	ReadRecord() (key, value []byte, err error)
 
-	// Key reads and returns the key of the current record in the iteration.
+	// ReadKey reads and returns the key of the current record in the iteration.
 	// If the iteration has no more records it returns an error.
 	ReadKey() (key []byte, err error)
 
-	// Value reads and returns the value of the current record in the iteration.
+	// ReadValue reads and returns the value of the current record in the
+	// iteration.
 	// If the iteration has no more records it returns an error.
 	ReadValue() (value []byte, err error)
 
