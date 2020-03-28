@@ -66,4 +66,12 @@ func TestValueFactory(t *testing.T) {
 		valueFactory{fs}.DestroyValue(v)
 		assert.Equal(t, 0, fs.Stats().AllocatedSpaceSize)
 	}
+
+	{
+		v := valueFactory{fs}.CreateValue(buf[:2*maxValueSize])
+		buf2 := make([]byte, maxValueSize)
+		n := valueFactory{fs}.ReadValue(v, maxValueSize/2, buf2)
+		assert.Equal(t, len(buf2), n)
+		assert.Equal(t, buf[maxValueSize/2:maxValueSize/2+maxValueSize], []byte(buf2))
+	}
 }

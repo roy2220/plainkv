@@ -79,4 +79,12 @@ func TestKeyComparerAndFactory(t *testing.T) {
 		keyFactory{fs}.DestroyKey(k)
 		assert.Equal(t, 0, fs.Stats().AllocatedSpaceSize)
 	}
+
+	{
+		k := keyFactory{fs}.CreateKey(buf[:2*maxKeySize])
+		buf2 := make([]byte, maxKeySize)
+		n := keyFactory{fs}.ReadKey(k, maxKeySize/2, buf2)
+		assert.Equal(t, len(buf2), n)
+		assert.Equal(t, buf[maxKeySize/2:maxKeySize/2+maxKeySize], []byte(buf2))
+	}
 }
