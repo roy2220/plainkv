@@ -250,7 +250,7 @@ func (bpt *BPTree) getValue(recordPath recordPath, do bool) []byte {
 
 	_, leafController, recordIndex := bpt.locateRecord(recordPath)
 	value := leafController.GetValue(recordIndex)
-	return valueFactory{bpt.fileStorage}.ReadValue(value)
+	return valueFactory{bpt.fileStorage}.ReadValueAll(value)
 }
 
 func (bpt *BPTree) createRecord(key, value []byte) record {
@@ -268,7 +268,7 @@ func (bpt *BPTree) destroyRecord(record record, returnValue bool) []byte {
 	var value []byte
 
 	if returnValue {
-		value = valueFactory{bpt.fileStorage}.ReadValue(record.Value)
+		value = valueFactory{bpt.fileStorage}.ReadValueAll(record.Value)
 	} else {
 		value = nil
 	}
@@ -285,11 +285,11 @@ func (bpt *BPTree) replaceValue(recordPath recordPath, newValue []byte, returnOl
 	var oldValueSize int
 
 	if returnOldValue {
-		oldValue = valueFactory{bpt.fileStorage}.ReadValue(value)
+		oldValue = valueFactory{bpt.fileStorage}.ReadValueAll(value)
 		oldValueSize = len(oldValue)
 	} else {
 		oldValue = nil
-		oldValueSize = valueFactory{bpt.fileStorage}.GetValueSize(value)
+		oldValueSize = valueFactory{bpt.fileStorage}.GetRawValueSize(value)
 	}
 
 	valueFactory{bpt.fileStorage}.DestroyValue(value)
@@ -773,7 +773,7 @@ func (bpt *BPTree) search(minKey []byte, maxKey []byte) (int64, int, int64, int,
 	}
 
 	if !(!ok1 && ok3) {
-		minKey = keyFactory{bpt.fileStorage}.ReadKey(minLeafController.GetKey(minRecordIndex))
+		minKey = keyFactory{bpt.fileStorage}.ReadKeyAll(minLeafController.GetKey(minRecordIndex))
 
 		if !ok2 {
 			d = bytes.Compare(minKey, maxKey)
@@ -796,7 +796,7 @@ func (bpt *BPTree) search(minKey []byte, maxKey []byte) (int64, int, int64, int,
 	}
 
 	if !(!ok2 && ok4) {
-		maxKey = keyFactory{bpt.fileStorage}.ReadKey(maxLeafController.GetKey(maxRecordIndex))
+		maxKey = keyFactory{bpt.fileStorage}.ReadKeyAll(maxLeafController.GetKey(maxRecordIndex))
 		d = bytes.Compare(minKey, maxKey)
 
 		if d > 0 {

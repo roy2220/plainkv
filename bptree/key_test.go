@@ -34,10 +34,18 @@ func TestKeyComparerAndFactory(t *testing.T) {
 		assert.Greater(t, d, 0)
 		d = keyComparer{fs}.CompareKey(k, buf[:maxKeySize-1])
 		assert.Equal(t, d, 0)
-		k2 := keyFactory{fs}.ReadKey(k)
+		k2 := keyFactory{fs}.ReadKeyAll(k)
 		assert.Equal(t, buf[:maxKeySize-1], k2)
 		d = keyComparer{fs}.CompareKey(k, buf[:maxKeySize])
 		assert.Less(t, d, 0)
+
+		ks := keyFactory{fs}.GetRawKeySize(k)
+		assert.Equal(t, len(k2), ks)
+
+		buf2 := make([]byte, maxKeySize-1)
+		n := keyFactory{fs}.ReadKey(k, 0, buf2)
+		assert.Equal(t, len(buf2), n)
+
 		assert.Equal(t, 0, fs.Stats().AllocatedSpaceSize)
 		keyFactory{fs}.DestroyKey(k)
 	}
@@ -50,10 +58,23 @@ func TestKeyComparerAndFactory(t *testing.T) {
 		assert.Greater(t, d, 0)
 		d = keyComparer{fs}.CompareKey(k, buf[:2*maxKeySize])
 		assert.Equal(t, d, 0)
-		k2 := keyFactory{fs}.ReadKey(k)
+		k2 := keyFactory{fs}.ReadKeyAll(k)
 		assert.Equal(t, buf[:2*maxKeySize], k2)
 		d = keyComparer{fs}.CompareKey(k, buf[:2*maxKeySize+1])
 		assert.Less(t, d, 0)
+
+		ks := keyFactory{fs}.GetRawKeySize(k)
+		assert.Equal(t, len(k2), ks)
+
+		buf2 := make([]byte, maxKeySize-8)
+		n := keyFactory{fs}.ReadKey(k, 0, buf2)
+		assert.Equal(t, len(buf2), n)
+		assert.Equal(t, buf[:maxKeySize-8], []byte(buf2))
+		buf2 = make([]byte, maxKeySize)
+		n = keyFactory{fs}.ReadKey(k, maxKeySize/2, buf2)
+		assert.Equal(t, len(buf2), n)
+		assert.Equal(t, buf[maxKeySize/2:maxKeySize/2+maxKeySize], []byte(buf2))
+
 		assert.Less(t, 0, fs.Stats().AllocatedSpaceSize)
 		keyFactory{fs}.DestroyKey(k)
 		assert.Equal(t, 0, fs.Stats().AllocatedSpaceSize)

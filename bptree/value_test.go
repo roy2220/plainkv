@@ -30,16 +30,38 @@ func TestValueFactory(t *testing.T) {
 
 	{
 		v := valueFactory{fs}.CreateValue(buf[:maxValueSize-1])
-		v2 := valueFactory{fs}.ReadValue(v)
+		v2 := valueFactory{fs}.ReadValueAll(v)
 		assert.Equal(t, buf[:maxValueSize-1], v2)
+
+		vs := valueFactory{fs}.GetRawValueSize(v)
+		assert.Equal(t, len(v2), vs)
+
+		buf2 := make([]byte, maxValueSize-1)
+		n := valueFactory{fs}.ReadValue(v, 0, buf2)
+		assert.Equal(t, len(buf2), n)
+		assert.Equal(t, buf[:maxValueSize-1], []byte(buf2))
+
 		assert.Equal(t, 0, fs.Stats().AllocatedSpaceSize)
 		valueFactory{fs}.DestroyValue(v)
 	}
 
 	{
 		v := valueFactory{fs}.CreateValue(buf[:2*maxValueSize])
-		v2 := valueFactory{fs}.ReadValue(v)
+		v2 := valueFactory{fs}.ReadValueAll(v)
 		assert.Equal(t, buf[:2*maxValueSize], v2)
+
+		vs := valueFactory{fs}.GetRawValueSize(v)
+		assert.Equal(t, len(v2), vs)
+
+		buf2 := make([]byte, maxValueSize-8)
+		n := valueFactory{fs}.ReadValue(v, 0, buf2)
+		assert.Equal(t, len(buf2), n)
+		assert.Equal(t, buf[:maxValueSize-8], []byte(buf2))
+		buf2 = make([]byte, maxValueSize)
+		n = valueFactory{fs}.ReadValue(v, maxValueSize/2, buf2)
+		assert.Equal(t, len(buf2), n)
+		assert.Equal(t, buf[maxValueSize/2:maxValueSize/2+maxValueSize], []byte(buf2))
+
 		assert.Less(t, 0, fs.Stats().AllocatedSpaceSize)
 		valueFactory{fs}.DestroyValue(v)
 		assert.Equal(t, 0, fs.Stats().AllocatedSpaceSize)

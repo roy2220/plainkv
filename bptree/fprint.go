@@ -16,8 +16,8 @@ func (bpt *BPTree) doFprint(writer io.Writer, nodeAddr int64, nodeDepth int, pre
 		n := leafController.NumberOfRecords()
 
 		for i := 0; i < n; i++ {
-			key := keyFactory{bpt.fileStorage}.ReadKey(leafController.GetKey(i))
-			value := valueFactory{bpt.fileStorage}.ReadValue(leafController.GetValue(i))
+			key := keyFactory{bpt.fileStorage}.ReadKeyAll(leafController.GetKey(i))
+			value := valueFactory{bpt.fileStorage}.ReadValueAll(leafController.GetValue(i))
 			var err error
 
 			switch i {
@@ -47,7 +47,7 @@ func (bpt *BPTree) doFprint(writer io.Writer, nodeAddr int64, nodeDepth int, pre
 		n := nonLeafController.NumberOfChildren()
 
 		for i := 1; i < n; i++ {
-			key := keyFactory{bpt.fileStorage}.ReadKey(nonLeafController.GetKey(i))
+			key := keyFactory{bpt.fileStorage}.ReadKeyAll(nonLeafController.GetKey(i))
 
 			if _, err := fmt.Fprintf(writer, "%s├─● %q", newLine, key); err != nil {
 				return err

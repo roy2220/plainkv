@@ -31,17 +31,17 @@ func ExampleOrderedDict() {
 		defer od.Close()
 
 		for it := od.RangeAsc(plainkv.MinKey, plainkv.MaxKey); !it.IsAtEnd(); it.Advance() {
-			k, v, _ := it.ReadRecord()
+			k, v, _ := it.ReadRecordAll()
 			fmt.Printf("%q %q\n", k, v)
 		}
 
 		for it := od.RangeDesc([]byte("foo"), plainkv.MaxKey); !it.IsAtEnd(); it.Advance() {
-			k, v, _ := it.ReadRecord()
+			k, v, _ := it.ReadRecordAll()
 			fmt.Printf("%q %q\n", k, v)
 		}
 
-		minKey, _ := od.RangeAsc(plainkv.MinKey, plainkv.MinKey).ReadKey()
-		maxKey, _ := od.RangeDesc(plainkv.MaxKey, plainkv.MaxKey).ReadKey()
+		minKey, _ := od.RangeAsc(plainkv.MinKey, plainkv.MinKey).ReadKeyAll()
+		maxKey, _ := od.RangeDesc(plainkv.MaxKey, plainkv.MaxKey).ReadKeyAll()
 		fmt.Printf("%q...%q\n", minKey, maxKey)
 
 		v, ok := od.Test([]byte("foo"), true /* return the present value */)
