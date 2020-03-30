@@ -279,7 +279,7 @@ func (bpt *BPTree) destroyRecord(record record, returnValue bool) []byte {
 }
 
 func (bpt *BPTree) replaceValue(recordPath recordPath, newValue []byte, returnOldValue bool) []byte {
-	_, leafController, recordIndex := bpt.locateRecord(recordPath)
+	leafAddr, leafController, recordIndex := bpt.locateRecord(recordPath)
 	value := leafController.GetValue(recordIndex)
 	var oldValue []byte
 	var oldValueSize int
@@ -294,6 +294,7 @@ func (bpt *BPTree) replaceValue(recordPath recordPath, newValue []byte, returnOl
 
 	valueFactory{bpt.fileStorage}.DestroyValue(value)
 	value = valueFactory{bpt.fileStorage}.CreateValue(newValue)
+	leafController = bpt.getLeafController(leafAddr)
 	leafController.SetValue(recordIndex, value)
 	bpt.ensureNotUnderloadLeaf(&recordPath)
 	bpt.ensureNotOverloadLeaf(&recordPath)

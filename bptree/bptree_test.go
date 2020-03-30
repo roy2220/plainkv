@@ -15,7 +15,7 @@ import (
 )
 
 func TestBPTreeAddOrUpdateAndHasRecord(t *testing.T) {
-	bpt, _, cleanup := MakeBPTree(t)
+	bpt, fs, cleanup := MakeBPTree(t)
 	defer cleanup()
 
 	for i, k := range Keywords {
@@ -30,6 +30,8 @@ func TestBPTreeAddOrUpdateAndHasRecord(t *testing.T) {
 	_, ok := bpt.AddOrUpdateRecord([]byte("K4cM,b/PaY;4Hb[A]"), nil, false)
 	assert.True(t, ok)
 	_, ok = bpt.AddRecord([]byte("K4cM,b/PaY;4Hb[A]"), nil, true)
+	assert.False(t, ok)
+	_, ok = bpt.AddOrUpdateRecord([]byte("K4cM,b/PaY;4Hb[A]"), make([]byte, fs.Stats().MappedSpaceSize/2), false)
 	assert.False(t, ok)
 
 	for i, k := range Keywords {
