@@ -99,39 +99,18 @@ func (hm *HashMap) Load(infoAddr int64) {
 // present value (optional) of the item.
 func (hm *HashMap) AddItem(key []byte, value []byte, returnPresentValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
-	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
-	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := unpackSlot(hm.loadSlot(slotAddr))
+	items, i := hm.locateItem(key, keySum)
 
-	for i := range items {
-		item := &items[i]
-
-		if matchItem(item, key, keySum) {
-			if returnPresentValue {
-				value = copyBytes(item.Value)
-			} else {
-				value = nil
-			}
-
-			return value, false
-		}
+	if i >= 0 {
+		return hm.getValue(items, i, returnPresentValue), false
 	}
 
-	hm.payloadSize += len(key) + len(value)
-
-	if len(key) <= maxShortKeySize {
-		// optimization for binary size
-		keySum = 0
-	}
-
-	items = append(items, hashItem{
+	hm.appendItem(items, &hashItem{
 		KeySum: keySum,
 		Key:    key,
 		Value:  value,
 	})
 
-	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
-	hm.postAddItem()
 	return nil, true
 }
 
@@ -142,28 +121,13 @@ func (hm *HashMap) AddItem(key []byte, value []byte, returnPresentValue bool) ([
 // item, otherwise it returns false.
 func (hm *HashMap) UpdateItem(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
-	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
-	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := unpackSlot(hm.loadSlot(slotAddr))
+	items, i := hm.locateItem(key, keySum)
 
-	for i := range items {
-		item := &items[i]
-
-		if matchItem(item, key, keySum) {
-			hm.payloadSize += len(value) - len(item.Value)
-
-			if returnReplacedValue {
-				value, item.Value = copyBytes(item.Value), value
-			} else {
-				value, item.Value = nil, value
-			}
-
-			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
-			return value, true
-		}
+	if i < 0 {
+		return nil, false
 	}
 
-	return nil, false
+	return hm.replaceValue(items, i, value, returnReplacedValue), true
 }
 
 // AddOrUpdateItem adds the given item to the hash map or replaces
@@ -173,42 +137,18 @@ func (hm *HashMap) UpdateItem(key []byte, value []byte, returnReplacedValue bool
 // false and the replaced value (optional) of the item.
 func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte, returnReplacedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
-	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
-	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := unpackSlot(hm.loadSlot(slotAddr))
+	items, i := hm.locateItem(key, keySum)
 
-	for i := range items {
-		item := &items[i]
-
-		if matchItem(item, key, keySum) {
-			hm.payloadSize += len(value) - len(item.Value)
-
-			if returnReplacedValue {
-				value, item.Value = copyBytes(item.Value), value
-			} else {
-				value, item.Value = nil, value
-			}
-
-			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
-			return value, false
-		}
+	if i >= 0 {
+		return hm.replaceValue(items, i, value, returnReplacedValue), false
 	}
 
-	hm.payloadSize += len(key) + len(value)
-
-	if len(key) <= maxShortKeySize {
-		// optimization for binary size
-		keySum = 0
-	}
-
-	items = append(items, hashItem{
+	hm.appendItem(items, &hashItem{
 		KeySum: keySum,
 		Key:    key,
 		Value:  value,
 	})
 
-	slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
-	hm.postAddItem()
 	return nil, true
 }
 
@@ -218,37 +158,13 @@ func (hm *HashMap) AddOrUpdateItem(key []byte, value []byte, returnReplacedValue
 // item, otherwise it returns false.
 func (hm *HashMap) DeleteItem(key []byte, returnRemovedValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
-	slotAddrRef := hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
-	slotAddr := slotAddrRef.Get(hm.fileStorage)
-	items := unpackSlot(hm.loadSlot(slotAddr))
+	items, i := hm.locateItem(key, keySum)
 
-	for i := range items {
-		item := &items[i]
-
-		if matchItem(item, key, keySum) {
-			hm.payloadSize -= len(item.Key) + len(item.Value)
-			var value []byte
-
-			if returnRemovedValue {
-				value = copyBytes(item.Value)
-			} else {
-				value = nil
-			}
-
-			n := len(items)
-
-			for j := i + 1; j < n; j++ {
-				items[j-1] = items[j]
-			}
-
-			items = items[:n-1]
-			slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, packSlot(items)))
-			hm.postDeleteItem()
-			return value, true
-		}
+	if i < 0 {
+		return nil, false
 	}
 
-	return nil, false
+	return hm.removeItem(items, i, returnRemovedValue), true
 }
 
 // HasItem checks whether an item with the given key in the
@@ -258,26 +174,13 @@ func (hm *HashMap) DeleteItem(key []byte, returnRemovedValue bool) ([]byte, bool
 // returns false.
 func (hm *HashMap) HasItem(key []byte, returnPresentValue bool) ([]byte, bool) {
 	keySum := sumKey(key)
-	slotAddr := hm.locateSlotAddr(hm.calculateSlotIndex(keySum)).Get(hm.fileStorage)
-	items := unpackSlot(hm.loadSlot(slotAddr))
+	items, i := hm.locateItem(key, keySum)
 
-	for i := range items {
-		item := &items[i]
-
-		if matchItem(item, key, keySum) {
-			var value []byte
-
-			if returnPresentValue {
-				value = copyBytes(item.Value)
-			} else {
-				value = nil
-			}
-
-			return value, true
-		}
+	if i < 0 {
+		return nil, false
 	}
 
-	return nil, false
+	return hm.getValue(items, i, returnPresentValue), true
 }
 
 // FetchItem fetches an item from the given cursor in the hash map,
@@ -338,6 +241,88 @@ func (hm *HashMap) NumberOfItems() int {
 // PayloadSize returns the payload size of the hash map.
 func (hm *HashMap) PayloadSize() int {
 	return hm.payloadSize
+}
+
+func (hm *HashMap) locateItem(key []byte, keySum uint64) (*items, int) {
+	var items items
+	items.SlotAddrRef = hm.locateSlotAddr(hm.calculateSlotIndex(keySum))
+	items.SlotAddr = items.SlotAddrRef.Get(hm.fileStorage)
+	items.Value = unpackSlot(hm.loadSlot(items.SlotAddr))
+
+	for i := range items.Value {
+		item := &items.Value[i]
+
+		if matchItem(item, key, keySum) {
+			return &items, i
+		}
+	}
+
+	return &items, -1
+}
+
+func (hm *HashMap) flushItems(items *items) {
+	items.SlotAddr = hm.restoreSlot(items.SlotAddr, packSlot(items.Value))
+	items.SlotAddrRef.Set(hm.fileStorage, items.SlotAddr)
+}
+
+func (hm *HashMap) appendItem(items *items, item *hashItem) {
+	hm.payloadSize += len(item.Key) + len(item.Value)
+
+	if len(item.Key) <= maxShortKeySize {
+		// optimization for binary size
+		item.KeySum = 0
+	}
+
+	items.Value = append(items.Value, *item)
+	hm.flushItems(items)
+	hm.postAddItem()
+}
+
+func (hm *HashMap) removeItem(items *items, i int, returnRemovedValue bool) []byte {
+	item := &items.Value[i]
+	hm.payloadSize -= len(item.Key) + len(item.Value)
+	var value []byte
+
+	if returnRemovedValue {
+		value = copyBytes(item.Value)
+	} else {
+		value = nil
+	}
+
+	n := len(items.Value)
+
+	for j := i + 1; j < n; j++ {
+		items.Value[j-1] = items.Value[j]
+	}
+
+	items.Value = items.Value[:n-1]
+	hm.flushItems(items)
+	hm.postDeleteItem()
+	return value
+}
+
+func (hm *HashMap) replaceValue(items *items, i int, value []byte, returnReplacedValue bool) []byte {
+	item := &items.Value[i]
+	hm.payloadSize += len(value) - len(item.Value)
+
+	if returnReplacedValue {
+		value, item.Value = copyBytes(item.Value), value
+	} else {
+		value, item.Value = nil, value
+	}
+
+	hm.flushItems(items)
+	return value
+}
+
+func (hm *HashMap) getValue(items *items, i int, do bool) []byte {
+	if !do {
+		return nil
+	}
+
+	item := &items.Value[i]
+	value := copyBytes(item.Value)
+	return value
 }
 
 func (hm *HashMap) calculateSlotIndex(keySum uint64) int {
@@ -544,6 +529,12 @@ type hashItem struct {
 	KeySum uint64
 	Key    []byte
 	Value  []byte
+}
+
+type items struct {
+	SlotAddrRef addrRef
+	SlotAddr    int64
+	Value       []hashItem
 }
 
 var errCorrupted = errors.New("hashmap: corrupted")
