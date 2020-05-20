@@ -225,7 +225,7 @@ func (hm *HashMap) NumberOfSlotDirs() int {
 // MinNumberOfSlots returns the minimum number of the slots of
 // the hash map.
 func (hm *HashMap) MinNumberOfSlots() int {
-	return 1 << hm.minSlotCountShift
+	return hm.minSlotCount()
 }
 
 // NumberOfSlots returns the number of the slots of the hash map.
@@ -326,17 +326,17 @@ func (hm *HashMap) getValue(items *items, i int, do bool) []byte {
 }
 
 func (hm *HashMap) calculateSlotIndex(keySum uint64) int {
-	slotIndex := int(keySum & ((1 << (hm.minSlotCountShift + 1)) - 1))
+	slotIndex := int(keySum & uint64(hm.maxSlotCountPlusOne()-1))
 
 	if slotIndex >= hm.slotCount {
-		slotIndex = hm.calculateParentSlotIndex(slotIndex)
+		slotIndex = hm.calculateLowSlotIndex(slotIndex)
 	}
 
 	return slotIndex
 }
 
-func (hm *HashMap) calculateParentSlotIndex(slotIndex int) int {
-	return slotIndex &^ (1 << hm.minSlotCountShift)
+func (hm *HashMap) calculateLowSlotIndex(highSlotIndex int) int {
+	return highSlotIndex &^ hm.minSlotCount()
 }
 
 func (hm *HashMap) locateSlotAddr(slotIndex int) addrRef {
@@ -413,11 +413,11 @@ func (hm *HashMap) postDeleteItem() {
 }
 
 func (hm *HashMap) maybeExpand() {
-	for float64(hm.itemCount)/float64(hm.slotCount) > loadFactor {
-		slotIndex := hm.calculateParentSlotIndex(hm.slotCount)
+	for hm.loadFactor() > maxLoadFactor {
+		slotIndex := hm.calculateLowSlotIndex(hm.slotCount)
 		slotAddrRef := hm.locateSlotAddr(slotIndex)
 		slotAddr := slotAddrRef.Get(hm.fileStorage)
-		items1, items2 := splitItems(unpackSlot(hm.loadSlot(slotAddr)), uint64(1<<hm.minSlotCountShift))
+		items1, items2 := splitItems(unpackSlot(hm.loadSlot(slotAddr)), uint64(hm.minSlotCount()))
 		slot1, slot2 := packSlot(items1), packSlot(items2)
 		slotAddrRef.Set(hm.fileStorage, hm.restoreSlot(slotAddr, slot1))
 		hm.addSlot(slot2)
@@ -425,9 +425,9 @@ func (hm *HashMap) maybeExpand() {
 }
 
 func (hm *HashMap) maybeShrink() {
-	for hm.slotCount >= 2 && float64(hm.itemCount)/float64(hm.slotCount) <= loadFactor/2 {
+	for hm.slotCount >= 2 && hm.loadFactor() < minLoadFactor {
 		items1 := unpackSlot(hm.removeSlot())
-		slotIndex := hm.calculateParentSlotIndex(hm.slotCount)
+		slotIndex := hm.calculateLowSlotIndex(hm.slotCount)
 		slotAddrRef := hm.locateSlotAddr(slotIndex)
 		slotAddr := slotAddrRef.Get(hm.fileStorage)
 		items2 := unpackSlot(hm.loadSlot(slotAddr))
@@ -443,7 +443,7 @@ func (hm *HashMap) addSlot(slot *protocol.HashSlot) {
 	hm.locateSlotAddr(hm.slotCount).Set(hm.fileStorage, hm.storeSlot(slot))
 	hm.slotCount++
 
-	if hm.slotCount == 1<<(hm.minSlotCountShift+1) {
+	if hm.slotCount == hm.maxSlotCountPlusOne() {
 		hm.minSlotCountShift++
 	}
 }
@@ -455,7 +455,7 @@ func (hm *HashMap) removeSlot() *protocol.HashSlot {
 	hm.eraseSlot(slotAddr)
 	hm.slotCount--
 
-	if hm.slotCount < 1<<hm.minSlotCountShift {
+	if hm.slotCount < hm.minSlotCount() {
 		hm.minSlotCountShift--
 	}
 
@@ -481,7 +481,7 @@ func (hm *HashMap) removeSlotDir() {
 	hm.fileStorage.FreeSpace(slotDirAddr)
 	hm.slotDirCount--
 
-	if hm.maxSlotDirCountShift > minMaxSlotDirCountShift && hm.slotDirCount == (1<<(hm.maxSlotDirCountShift-2))+1 {
+	if hm.maxSlotDirCountShift > minMaxSlotDirCountShift && hm.slotDirCount == 1<<(hm.maxSlotDirCountShift-2) {
 		hm.adjustSlotDirs(hm.maxSlotDirCountShift - 1)
 	}
 }
@@ -496,6 +496,18 @@ func (hm *HashMap) adjustSlotDirs(maxSlotDirCountShift int) {
 	hm.maxSlotDirCountShift = maxSlotDirCountShift
 }
 
+func (hm *HashMap) loadFactor() float64 {
+	return float64(hm.itemCount) / float64(hm.slotCount)
+}
+
+func (hm *HashMap) minSlotCount() int {
+	return 1 << hm.minSlotCountShift
+}
+
+func (hm *HashMap) maxSlotCountPlusOne() int {
+	return 1 << (hm.minSlotCountShift + 1)
+}
+
 // Cursor represents a cursor at a position in a hash map.
 type Cursor struct {
 	items     []hashItem
@@ -506,7 +518,8 @@ type Cursor struct {
 const (
 	minMaxSlotDirCountShift = 3
 	slotDirLengthShift      = 12
-	loadFactor              = 1.61803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475
+	maxLoadFactor           = 1.61803398874989484820458683436563811772030917980576286213544862270526046281890244970720720418939113748475
+	minLoadFactor           = maxLoadFactor / 2
 	maxShortKeySize         = 24
 )
 
