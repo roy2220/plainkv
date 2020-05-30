@@ -1,0 +1,15 @@
+version: "3.3"
+services:
+  builder:
+    build:
+      context: ./builder
+      cache_from:
+        - ${COMPOSE_PROJECT_NAME}-builder:latest
+    image: ${COMPOSE_PROJECT_NAME}-builder:latest
+    volumes:
+      - type: bind
+        source: ..
+        target: /project
+    environment:
+      - CGO_ENABLED=0
+      - GOCACHE=/project/build/cache/go

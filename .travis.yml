@@ -8,13 +8,13 @@ cache:
     - build/cache
 
 before_script:
-  - scripts/ci/builder-docker-image.sh load
+  - scripts/ci/docker-image.sh tryload plainkv-builder:latest
 
 script:
   - make USE_DOCKER=1
 
 before_cache:
-  - scripts/ci/builder-docker-image.sh store
+  - scripts/ci/docker-image.sh trysave plainkv-builder:latest
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

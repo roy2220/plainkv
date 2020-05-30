@@ -1,3 +1,4 @@
 /build
 /coverage.txt
+/scripts/builder/go.*
 /test/*.tmp
