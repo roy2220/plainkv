@@ -202,7 +202,7 @@ var SortedKeywordIndexes []int
 var SortedKeywordRIndexes []int
 
 func MakeBPTree(t *testing.T) (*bptree.BPTree, *fsm.FileStorage, func()) {
-	const fn = "../test/bptree.tmp"
+	const fn = "../testdata/bptree.tmp"
 	fs := new(fsm.FileStorage).Init()
 	err := fs.Open(fn, true)
 
@@ -258,7 +258,7 @@ func MakeBPTree(t *testing.T) (*bptree.BPTree, *fsm.FileStorage, func()) {
 }
 
 func TestMain(m *testing.M) {
-	data, err := ioutil.ReadFile("../test/data/10-million-password-list-top-1000000.txt")
+	data, err := ioutil.ReadFile("../testdata/10-million-password-list-top-1000000.txt")
 
 	if err != nil {
 		panic(err)

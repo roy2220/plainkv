@@ -8,7 +8,7 @@ import (
 
 func ExampleOrderedDict() {
 	func() {
-		od, err := plainkv.OpenOrderedDict("./test/ordereddict.tmp", true)
+		od, err := plainkv.OpenOrderedDict("./testdata/ordereddict.tmp", true)
 		if err != nil {
 			panic(err)
 		}
@@ -24,7 +24,7 @@ func ExampleOrderedDict() {
 	}()
 
 	func() {
-		od, err := plainkv.OpenOrderedDict("./test/ordereddict.tmp", false)
+		od, err := plainkv.OpenOrderedDict("./testdata/ordereddict.tmp", false)
 		if err != nil {
 			panic(err)
 		}

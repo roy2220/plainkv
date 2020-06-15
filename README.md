@@ -28,7 +28,7 @@ import (
 
 func main() {
         func() {
-                d, err := plainkv.OpenDict("./test/dict.tmp", true)
+                d, err := plainkv.OpenDict("./testdata/dict.tmp", true)
                 if err != nil {
                         panic(err)
                 }
@@ -44,7 +44,7 @@ func main() {
         }()
 
         func() {
-                d, err := plainkv.OpenDict("./test/dict.tmp", false)
+                d, err := plainkv.OpenDict("./testdata/dict.tmp", false)
                 if err != nil {
                         panic(err)
                 }
@@ -102,7 +102,7 @@ import (
 
 func main() {
         func() {
-                od, err := plainkv.OpenOrderedDict("./test/ordereddict.tmp", true)
+                od, err := plainkv.OpenOrderedDict("./testdata/ordereddict.tmp", true)
                 if err != nil {
                         panic(err)
                 }
@@ -118,7 +118,7 @@ func main() {
         }()
 
         func() {
-                od, err := plainkv.OpenOrderedDict("./test/ordereddict.tmp", false)
+                od, err := plainkv.OpenOrderedDict("./testdata/ordereddict.tmp", false)
                 if err != nil {
                         panic(err)
                 }

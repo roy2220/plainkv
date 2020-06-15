@@ -9,7 +9,7 @@ import (
 )
 
 func TestValueFactory(t *testing.T) {
-	const fn = "../test/bptree_value.tmp"
+	const fn = "../testdata/bptree_value.tmp"
 
 	fs := new(fsm.FileStorage).Init()
 	err := fs.Open(fn, true)

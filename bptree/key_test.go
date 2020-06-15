@@ -9,7 +9,7 @@ import (
 )
 
 func TestKeyComparerAndFactory(t *testing.T) {
-	const fn = "../test/bptree_key.tmp"
+	const fn = "../testdata/bptree_key.tmp"
 
 	fs := new(fsm.FileStorage).Init()
 	err := fs.Open(fn, true)

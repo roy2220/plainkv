@@ -8,7 +8,7 @@ import (
 
 func ExampleDict() {
 	func() {
-		d, err := plainkv.OpenDict("./test/dict.tmp", true)
+		d, err := plainkv.OpenDict("./testdata/dict.tmp", true)
 		if err != nil {
 			panic(err)
 		}
@@ -24,7 +24,7 @@ func ExampleDict() {
 	}()
 
 	func() {
-		d, err := plainkv.OpenDict("./test/dict.tmp", false)
+		d, err := plainkv.OpenDict("./testdata/dict.tmp", false)
 		if err != nil {
 			panic(err)
 		}
